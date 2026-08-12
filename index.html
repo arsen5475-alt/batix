@@ -308,7 +308,7 @@ textarea.inp{resize:vertical;min-height:64px}
 const SUPABASE_URL = 'https://llakesuqcugmdniaqdjr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_SCBPyFQ7ktB9Znho8MM6kg_w-cphtSI';
 
-const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], mode:'signup' };
+const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], mode:'signup' };
 const $ = s=>document.querySelector(s);
 const eur = n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(+n||0);
 const esc = s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -477,6 +477,7 @@ async function loadData(){
   S.devis = await db('devis',{query:`?select=*,clients(nom),devis_lignes(*)&company_id=eq.${S.company.id}&order=created_at.desc`});
   S.factures = await db('factures',{query:`?select=*,clients(nom)&company_id=eq.${S.company.id}&order=created_at.desc`});
   S.clients = await db('clients',{query:`?select=*&company_id=eq.${S.company.id}&order=nom`});
+  S.depenses = await db('depenses',{query:`?select=*&company_id=eq.${S.company.id}&order=date_depense.desc`});
 }
 
 /* ---- DASHBOARD ---- */
@@ -496,6 +497,7 @@ function viewDash(){
         <div class="t">${eur(d.total)}
           <div class="act" style="margin-top:8px">
             <button class="btn ghost sm" onclick="openDoc('${d.id}')">Voir / PDF</button>
+            <button class="btn ghost sm" onclick="openDepenses('${d.id}')">Chantier</button>
             ${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepté</button>`:
               (invoiced.has(d.id)?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Créer facture</button>`)}
           </div>
@@ -663,9 +665,10 @@ function viewCompta(){
   const paid=S.factures.filter(f=>f.statut==='payee');
   const recettes=paid.reduce((s,f)=>s+(+f.total||0),0);
   const impayes=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);
+  const depTot=S.depenses.reduce((s,x)=>s+(+x.montant||0),0);
   const taux=(S.company.taux_cotisation!=null?+S.company.taux_cotisation:21.2);
   const cotis=recettes*taux/100;
-  const net=recettes-cotis;
+  const net=recettes-cotis-depTot;
   const lignes=paid.length?paid.map(f=>`
     <div class="row">
       <div class="n">${esc(f.numero)}</div>
@@ -676,15 +679,16 @@ function viewCompta(){
     </div>`).join(''):`<div class="empty"><b>Aucune recette encaissée</b>Marquez une facture « Payée » pour la voir ici.</div>`;
   $('#view').innerHTML=`
     <div class="sec-head"><h2>Comptabilité</h2></div>
-    <div class="stats">
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
       <div class="stat"><div class="k">Recettes encaissées</div><div class="v num accent">${eur(recettes)}</div><div class="sub">${paid.length} facture${paid.length>1?'s':''} payée${paid.length>1?'s':''}</div></div>
+      <div class="stat"><div class="k">Dépenses matériaux</div><div class="v num">${eur(depTot)}</div><div class="sub">tous chantiers</div></div>
       <div class="stat"><div class="k">Impayés</div><div class="v num">${eur(impayes)}</div><div class="sub">à encaisser</div></div>
       <div class="stat"><div class="k">Cotisations à prévoir</div><div class="v num">${eur(cotis)}</div><div class="sub">≈ ${taux}% des recettes</div></div>
     </div>
     <div class="panel" style="margin-top:2px">
-      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <div><div style="color:var(--muted);font-size:13px">Estimé net après cotisations</div><div class="num" style="font-family:'Space Grotesk';font-size:22px;font-weight:700;margin-top:4px">${eur(net)}</div></div>
-        <div style="color:var(--faint);font-size:12px;max-width:46ch">Estimation indicative. Ajustez votre taux réel dans « Mon entreprise » (vérifiable sur autoentrepreneur.urssaf.fr).</div>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center">
+        <div><div style="color:var(--muted);font-size:13px">Net estimé (recettes − dépenses − cotisations)</div><div class="num" style="font-family:'Space Grotesk';font-size:24px;font-weight:700;margin-top:4px;color:${net>=0?'var(--ok)':'var(--bad)'}">${eur(net)}</div></div>
+        <div style="color:var(--faint);font-size:12px;max-width:44ch">Estimation indicative. Ajustez votre taux dans « Mon entreprise » (vérifiable sur autoentrepreneur.urssaf.fr).</div>
       </div>
     </div>
     <div class="sec-head"><h2>Livre des recettes</h2></div>
@@ -693,6 +697,55 @@ function viewCompta(){
       ${lignes}
     </div>`;
 }
+
+/* ---- DÉPENSES / CHANTIER ---- */
+let _depDevis=null;
+window.openDepenses=(devisId)=>{ _depDevis=devisId; viewDepenses(); window.scrollTo(0,0); };
+function viewDepenses(){
+  const d=S.devis.find(x=>x.id===_depDevis); if(!d){ go('dash'); return; }
+  const deps=S.depenses.filter(x=>x.devis_id===_depDevis);
+  const tot=deps.reduce((s,x)=>s+(+x.montant||0),0);
+  const marge=(+d.total||0)-tot;
+  const rows=deps.length?deps.map(x=>`
+    <div class="row" style="grid-template-columns:1.6fr auto auto">
+      <div class="n" style="font-family:inherit;font-weight:500">${esc(x.libelle)}</div>
+      <div class="d" style="color:var(--faint)">${fdate(x.date_depense)}</div>
+      <div class="t">${eur(x.montant)}
+        <button class="btn ghost sm" style="margin-left:10px" onclick="delDepense('${x.id}')">✕</button>
+      </div>
+    </div>`).join(''):`<div class="empty"><b>Aucun matériau saisi</b>Ajoutez ce que vous achetez pour ce chantier.</div>`;
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Chantier — ${esc(d.numero)}</h2><button class="btn ghost" onclick="go('dash')">← Retour</button></div>
+    <p style="color:var(--muted);font-size:13px;margin:-6px 0 16px">Client : ${esc(d.clients?.nom||'—')} · Devis : ${eur(d.total)}</p>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="stat"><div class="k">Montant du devis</div><div class="v num">${eur(d.total)}</div></div>
+      <div class="stat"><div class="k">Matériaux / dépenses</div><div class="v num">${eur(tot)}</div><div class="sub">${deps.length} ligne${deps.length>1?'s':''}</div></div>
+      <div class="stat"><div class="k">Marge estimée</div><div class="v num ${marge>=0?'accent':''}" ${marge<0?'style="color:var(--bad)"':''}>${eur(marge)}</div><div class="sub">devis − dépenses</div></div>
+    </div>
+    <div id="dp-msg"></div>
+    <div class="panel">
+      <h3>Ajouter un matériau / une dépense</h3>
+      <div class="grid2">
+        <label class="fld"><span>Libellé</span><input class="inp" id="dp-lib" placeholder="Ex : Peinture Tollens 15L"></label>
+        <label class="fld"><span>Montant</span><input class="inp" id="dp-m" type="number" step="0.01" placeholder="0"></label>
+      </div>
+      <label class="fld"><span>Date</span><input class="inp" id="dp-date" type="date" value="${today()}"></label>
+      <div class="editor-actions"><button class="btn" onclick="addDepense()">Ajouter</button></div>
+    </div>
+    <div class="sec-head"><h2>Matériaux du chantier</h2></div>
+    <div class="card">${rows}</div>`;
+}
+window.addDepense=async()=>{
+  const lib=$('#dp-lib').value.trim(), m=parseFloat($('#dp-m').value)||0, dt=$('#dp-date').value||today();
+  if(!lib||!m){ $('#dp-msg').innerHTML='<div class="msg err">Indiquez un libellé et un montant.</div>'; return; }
+  try{
+    const r=await db('depenses',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:_depDevis,libelle:lib,montant:m,date_depense:dt}});
+    S.depenses.unshift(r[0]); viewDepenses();
+  }catch(e){ $('#dp-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; }
+};
+window.delDepense=async(id)=>{
+  try{ await db('depenses',{method:'DELETE',query:`?id=eq.${id}`}); S.depenses=S.depenses.filter(x=>x.id!==id); viewDepenses(); }catch(e){}
+};
 
 /* ---- FACTURES ---- */
 window.createFacture = async (devisId)=>{
