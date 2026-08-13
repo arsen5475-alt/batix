@@ -910,6 +910,12 @@ window.setFactureUnpaid = async (id)=>{
   await db('factures',{method:'PATCH',query:`?id=eq.${id}`,body:{statut:'impayee'}});
   const f=S.factures.find(x=>x.id===id); if(f)f.statut='impayee'; viewFactures();
 };
+window.delFacture = async (id)=>{
+  const f=S.factures.find(x=>x.id===id);
+  if(!confirm(`Supprimer la facture ${f?f.numero:''} ?\nCette action est définitive.`)) return;
+  try{ await db('factures',{method:'DELETE',query:`?id=eq.${id}`}); S.factures=S.factures.filter(x=>x.id!==id); viewFactures(); }
+  catch(e){ alert(e.message); }
+};
 function viewFactures(){
   const fac=S.factures;
   const totFac=fac.reduce((s,f)=>s+(+f.total||0),0);
@@ -930,6 +936,7 @@ function viewFactures(){
             ${f.statut!=='payee'
               ? `<button class="btn sm" onclick="setFacturePaid('${f.id}')">Payée</button>`
               : `<button class="btn ghost sm" onclick="setFactureUnpaid('${f.id}')">Annuler paiement</button>`}
+            <button class="btn ghost sm" onclick="delFacture('${f.id}')">Suppr.</button>
           </div>
         </div>
       </div>`).join('')}`
