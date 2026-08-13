@@ -241,6 +241,39 @@ textarea.inp{resize:vertical;min-height:64px}
 .doc-sign{display:flex;justify-content:space-between;margin-top:34px;font-size:12px;color:#5b6478}
 .doc-sign .b{width:200px}.doc-sign .b .line{height:52px;border:1px dashed #c3c9d8;border-radius:6px;margin-top:6px}
 .doc-stamp{display:inline-block;border:2px solid #1a9e6a;color:#1a9e6a;font-family:'Space Grotesk';font-weight:700;padding:6px 14px;border-radius:6px;transform:rotate(-6deg);font-size:15px;letter-spacing:.03em}
+/* professional document template */
+.dhead{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}
+.dtitle-co{font-weight:700;font-size:15px;color:#1a1f2e;text-transform:uppercase;letter-spacing:.01em}
+.dco{color:#5b6478;font-size:11.5px;margin-top:8px;line-height:1.75}
+.dbig{font-family:'Space Grotesk';font-size:30px;font-weight:700;color:#3f9d8c;text-align:right;letter-spacing:.02em;line-height:1}
+.dnum{text-align:right;color:#3f9d8c;font-size:12.5px;margin-top:2px}
+.dmeta{text-align:right;color:#5b6478;font-size:12px;margin-top:2px}
+.dclient{margin:26px 0 4px}
+.dlabel{color:#3f9d8c;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid #dfe4e2;padding-bottom:5px;margin-bottom:8px}
+.dclient-name{font-weight:700;font-size:14px;color:#1a1f2e}
+.dclient-adr{color:#5b6478;font-size:12px}
+.ddesc{margin:18px 0 6px;color:#333;font-size:12.5px}
+.dtable{width:100%;border-collapse:collapse;margin-top:8px}
+.dtable th{background:#3f9d8c;color:#fff;text-align:left;font-size:11px;font-weight:600;padding:9px 10px}
+.dtable th.c,.dtable td.c{text-align:center}
+.dtable th.r,.dtable td.r{text-align:right}
+.dtable td{padding:11px 10px;border-bottom:1px solid #eef1f0;vertical-align:top;font-size:12px;color:#3a3f4a}
+.dtable tbody tr:nth-child(even){background:#f6f9f8}
+.dtable .cat{font-weight:700;color:#1a1f2e}
+.dtable .desc{color:#6b7381;font-size:11.5px;margin-top:2px}
+.dbottom{display:flex;justify-content:space-between;gap:24px;margin-top:22px}
+.dbottom-left{max-width:52%}
+.dblock{margin-bottom:14px}
+.dblock .dlabel{border:none;margin-bottom:4px}
+.dblock>div{color:#3a3f4a;font-size:12px}
+.dbottom-right{min-width:250px;align-self:flex-start}
+.dtot-line{display:flex;justify-content:space-between;padding:6px 12px;font-weight:600;color:#1a1f2e;font-size:13px}
+.dtot-bar{display:flex;justify-content:space-between;padding:12px 14px;background:#3f9d8c;color:#fff;font-family:'Space Grotesk';font-weight:700;font-size:16px;margin-top:6px;border-radius:4px}
+.dtva{text-align:right;color:#3f9d8c;font-style:italic;font-size:12px;margin-top:14px}
+.dsign{border:1px solid #d7dcda;border-radius:6px;padding:28px 14px 14px;color:#9aa0aa;font-style:italic;font-size:12px;margin-top:18px}
+.dbank{background:#eef4f2;border-radius:6px;padding:14px 16px;margin-top:20px;font-size:12px;color:#3a3f4a}
+.dbank .dlabel{border:none;margin-bottom:6px}
+.dfoot{margin-top:22px;padding-top:12px;border-top:1px solid #eef1f0;color:#8a9299;font-size:10px;line-height:1.6}
 
 @media (max-width:820px){
   #auth{grid-template-columns:1fr}
@@ -563,6 +596,7 @@ window.newDevis = ()=>{
   const y=new Date().getFullYear();
   const seq=String(S.devis.length+1).padStart(3,'0');
   ED={ numero:`DEV-${y}-${seq}`, date:today(), client_id:'', newClient:'', newAddr:'', mat:'entreprise', notes:'',
+       descChantier:'', acompte:'', duree:'',
        lignes:[{categorie:'',description:'',quantite:'',unite:'m²',prix_unitaire:'',montant:''}] };
   go('editor');
 };
@@ -586,6 +620,11 @@ function viewEditor(){
       <div class="seg" id="e-mat">
         <button data-v="entreprise" class="${ED.mat==='entreprise'?'on':''}">L'entreprise</button>
         <button data-v="client" class="${ED.mat==='client'?'on':''}">Le client</button>
+      </div>
+      <label class="fld" style="margin-top:14px"><span>Description du chantier (ligne au-dessus du tableau)</span><textarea class="inp" id="e-desc" placeholder="Ex : Salle de bain — pose de zellige (7 × 27 cm), surface 50 m².">${esc(ED.descChantier||'')}</textarea></label>
+      <div class="grid2">
+        <label class="fld"><span>Acompte à la signature (%)</span><input class="inp" id="e-acompte" type="number" step="1" placeholder="Ex : 30" value="${ED.acompte||''}"></label>
+        <label class="fld"><span>Durée estimée</span><input class="inp" id="e-duree" placeholder="Ex : 5 à 7 jours" value="${esc(ED.duree||'')}"></label>
       </div>
     </div>
 
@@ -642,6 +681,7 @@ async function saveDevis(){
   const btn=$('#e-save'); const em=$('#ed-msg');
   ED.numero=$('#e-num').value.trim(); ED.date=$('#e-date').value;
   ED.client_id=$('#e-client').value; ED.newClient=$('#e-newclient').value.trim(); ED.newAddr=$('#e-newaddr').value.trim(); ED.notes=$('#e-notes').value;
+  ED.descChantier=$('#e-desc')?.value.trim()||''; ED.acompte=$('#e-acompte')?.value||''; ED.duree=$('#e-duree')?.value.trim()||'';
   const lignes=ED.lignes.filter(l=>l.categorie.trim()||(+l.montant));
   if(!lignes.length){em.innerHTML='<div class="msg err">Ajoutez au moins un poste avec un prix.</div>';return;}
   if(!ED.client_id&&!ED.newClient){em.innerHTML='<div class="msg err">Choisissez un client ou saisissez-en un nouveau.</div>';return;}
@@ -655,7 +695,8 @@ async function saveDevis(){
     const total=lignes.reduce((s,l)=>s+(+l.montant||0),0);
     const dv=await db('devis',{method:'POST',prefer:'return=representation',body:{
       company_id:S.company.id,numero:ED.numero,client_id:clientId,date_devis:ED.date,
-      statut:'brouillon',materiel_fourni_par:ED.mat,notes:ED.notes,total}});
+      statut:'brouillon',materiel_fourni_par:ED.mat,notes:ED.notes,total,
+      description_chantier:ED.descChantier||null,acompte_pct:parseFloat(ED.acompte)||null,duree_estimee:ED.duree||null}});
     const did=dv[0].id;
     await db('devis_lignes',{method:'POST',prefer:'return=representation',body:
       lignes.map((l,i)=>({devis_id:did,categorie:l.categorie,description:l.description,
@@ -848,61 +889,80 @@ function viewFactures(){
 }
 window.openFacture = id=>{
   const f=S.factures.find(x=>x.id===id); if(!f)return;
-  const co=S.company;
-  const dv=S.devis.find(x=>x.id===f.devis_id);
-  const lignes=(dv?.devis_lignes||[]).sort((a,b)=>a.ordre-b.ordre);
-  const rows=lignes.length
-    ? lignes.map(l=>`<tr><td><div class="cat">${esc(l.categorie)}</div>${ligneDetail(l)}</td><td class="r"><span class="mont">${eur(l.montant)}</span></td></tr>`).join('')
-    : `<tr><td><div class="cat">Prestation</div>${dv?`<div class="desc">Selon devis ${esc(dv.numero)}</div>`:''}</td><td class="r"><span class="mont">${eur(f.total)}</span></td></tr>`;
-  const legal = co.tva_applicable ? `TVA incluse selon la réglementation en vigueur.` : `TVA non applicable, art. 293 B du CGI.`;
-  const paid = f.statut==='payee';
-  const clientEmail=(S.clients.find(c=>c.id===f.client_id)||{}).email||'';
-  _curDoc={ title:`Facture ${f.numero}`, filename:`Facture-${f.numero}.pdf`, clientEmail,
+  const co=S.company; const dv=S.devis.find(x=>x.id===f.devis_id);
+  const client=S.clients.find(c=>c.id===f.client_id)||{};
+  const lignes=(dv&&dv.devis_lignes)?dv.devis_lignes.slice().sort((a,b)=>a.ordre-b.ordre):[];
+  _curDoc={ title:`Facture ${f.numero}`, filename:`Facture-${f.numero}.pdf`, clientEmail:client.email||'',
     subject:`Facture ${f.numero} — ${co.nom||'Batix'}`,
     body:`Bonjour,\n\nVeuillez trouver ci-joint votre facture ${f.numero}.\n\nCordialement,\n${co.nom||''}` };
-  $('#doc-wrap').innerHTML = `
-    <div class="doc-toolbar">
-      <button class="btn ghost sm" onclick="closeDoc()">Fermer</button>
-      <button class="btn ghost sm" onclick="dlPdf()">PDF</button>
-      <button class="btn sm" onclick="shareDoc()">Envoyer</button>
-    </div>
-    <div class="doc" id="doc-el">
-      <div class="doc-top">
-        <div>
-          <div class="doc-brand">${esc(co.nom||'')}</div>
-          <div class="doc-co">
-            ${co.adresse?esc(co.adresse)+'<br>':''}
-            ${co.telephone?'Tél : '+esc(co.telephone)+'<br>':''}
-            ${co.email?esc(co.email)+'<br>':''}
-            ${co.siret?'SIRET : '+esc(co.siret):''}
-          </div>
-        </div>
-        <div class="doc-meta">
-          <div class="big">FACTURE</div>
-          <div>${esc(f.numero)}</div>
-          <div>${fdate(f.date_facture)}</div>
-          ${dv?`<div style="margin-top:4px">Réf. devis ${esc(dv.numero)}</div>`:''}
-        </div>
-      </div>
-      <div class="doc-parties">
-        <div>${paid?'<span class="doc-stamp">PAYÉE</span>':''}</div>
-        <div class="to"><div class="lab">Client</div><b>${esc(f.clients?.nom||'')}</b></div>
-      </div>
-      <table>
-        <thead><tr><th>Désignation</th><th class="r">Montant</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <div class="doc-tot"><div class="box">
-        <div class="lgrid grand"><span>${paid?'Montant réglé':'Montant à payer'}</span><span>${eur(f.total)}</span></div>
-      </div></div>
-      <div class="doc-legal">${legal}<br>${paid?'Facture acquittée. Merci.':'Règlement à réception de facture.'}</div>
-    </div>`;
-  $('#doc-wrap').classList.remove('hidden');
-  document.body.style.overflow='hidden';
+  const inner=buildDocHTML('facture',{ numero:f.numero, date:f.date_facture, refDevis:dv?dv.numero:'',
+    clientNom:f.clients?.nom||client.nom||'', clientAdresse:client.adresse||'',
+    desc:dv?dv.description_chantier:'', lignes, total:+f.total||0, paid:f.statut==='payee' });
+  $('#doc-wrap').innerHTML = docToolbar()+inner;
+  $('#doc-wrap').classList.remove('hidden'); document.body.style.overflow='hidden';
 };
 
 /* ---- DOC / PRINT ---- */
 let _curDoc={};
+function docToolbar(){ return `<div class="doc-toolbar"><button class="btn ghost sm" onclick="closeDoc()">Fermer</button><button class="btn ghost sm" onclick="dlPdf()">PDF</button><button class="btn sm" onclick="shareDoc()">Envoyer</button></div>`; }
+function addMonthsFr(ds,n){ if(!ds)return''; const d=new Date(ds+'T00:00:00'); d.setMonth(d.getMonth()+n); return d.toLocaleDateString('fr-FR'); }
+function eurOrDash(v){ return (v!=null&&v!=='')?eur(v):'—'; }
+function buildDocHTML(kind,o){
+  const co=S.company||{}; const isFac=kind==='facture'; const tvaApp=!!co.tva_applicable;
+  const acM=(!isFac && o.acomptePct>0)? o.total*o.acomptePct/100 : 0;
+  const modes=co.modes_paiement||'Virement bancaire   ·   Chèque';
+  const rows=(o.lignes||[]).length? (o.lignes||[]).map(l=>{
+    const q=(l.quantite!=null&&l.quantite!=='')?(+l.quantite).toLocaleString('fr-FR'):'1';
+    return `<tr>
+      <td><div class="cat">${esc(l.categorie)}</div>${l.description?`<div class="desc">${esc(l.description)}</div>`:''}</td>
+      <td class="c">${q}</td><td class="c">${esc(l.unite||'forfait')}</td>
+      <td class="r">${eurOrDash(l.prix_unitaire)}</td><td class="r">${eur(l.montant)}</td>
+    </tr>`; }).join('')
+    : `<tr><td><div class="cat">Prestation</div>${o.refDevis?`<div class="desc">Selon devis ${esc(o.refDevis)}</div>`:''}</td><td class="c">1</td><td class="c">forfait</td><td class="r">${eur(o.total)}</td><td class="r">${eur(o.total)}</td></tr>`;
+  const matNote=(!isFac && o.materiel==='client')?`<div class="ddesc" style="color:#3f9d8c">Matériaux fournis par le client — le présent devis chiffre la main-d'œuvre (pose) uniquement.</div>`:'';
+  return `<div class="doc" id="doc-el">
+    <div class="dhead">
+      <div>
+        <div class="dtitle-co">${co.titulaire_compte?esc(co.titulaire_compte)+'. ':''}${esc(co.nom||'')}</div>
+        <div class="dco">${co.adresse?esc(co.adresse)+'<br>':''}${co.telephone?esc(co.telephone)+'<br>':''}${co.email?esc(co.email)+'<br>':''}${co.rcs?esc(co.rcs):''}</div>
+      </div>
+      <div>
+        <div class="dbig">${isFac?'FACTURE':'DEVIS'}</div>
+        <div class="dnum">n° ${esc(o.numero)}</div>
+        <div class="dmeta">En date du : ${fdate(o.date)}</div>
+        ${!isFac&&o.valide?`<div class="dmeta">Valide jusqu'au : ${o.valide}</div>`:''}
+        ${!isFac&&o.duree?`<div class="dmeta">Durée estimée : ${esc(o.duree)}</div>`:''}
+        ${isFac&&o.refDevis?`<div class="dmeta">Réf. devis : ${esc(o.refDevis)}</div>`:''}
+      </div>
+    </div>
+    <div class="dclient">
+      <div class="dlabel">Client</div>
+      <div class="dclient-name">${esc(o.clientNom||'')}</div>
+      <div class="dclient-adr">${o.clientAdresse?esc(o.clientAdresse):'[Adresse]'}</div>
+    </div>
+    ${o.desc?`<div class="ddesc">${esc(o.desc)}</div>`:''}
+    ${matNote}
+    <table class="dtable">
+      <thead><tr><th>Désignation</th><th class="c">Qté.</th><th class="c">Unité</th><th class="r">Prix U.</th><th class="r">Total</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="dbottom">
+      <div class="dbottom-left">
+        ${acM>0?`<div class="dblock"><div class="dlabel">Acompte</div><div><b>${eur(acM)}</b> (${o.acomptePct} %) à la signature du devis, solde à la réception des travaux.</div></div>`:''}
+        <div class="dblock"><div class="dlabel">Modes de paiement</div><div>${esc(modes)}</div></div>
+      </div>
+      <div class="dbottom-right">
+        <div class="dtot-line"><span>Total ${tvaApp?'TTC':'HT'}</span><span>${eur(o.total)}</span></div>
+        <div class="dtot-bar"><span>${isFac&&o.paid?'Montant réglé':'Net à payer'}</span><span>${eur(o.total)}</span></div>
+      </div>
+    </div>
+    <div class="dtva">${tvaApp?'TVA incluse selon la réglementation en vigueur.':'TVA non applicable, art. 293 B du CGI.'}</div>
+    ${isFac?'':`<div class="dsign">Mention « Bon pour Accord », date et signature du client</div>`}
+    ${(co.iban||co.bic)?`<div class="dbank"><div class="dlabel">Coordonnées bancaires</div><div>${co.titulaire_compte?'Titulaire : '+esc(co.titulaire_compte)+'<br>':''}${co.iban?'IBAN : '+esc(co.iban)+'<br>':''}${co.bic?'BIC : '+esc(co.bic):''}</div></div>`:''}
+    ${(isFac&&o.paid)?`<div style="text-align:center;margin-top:16px"><span class="doc-stamp">PAYÉE</span></div>`:''}
+    <div class="dfoot">${esc(co.nom||'')}${co.siret?' — SIRET '+esc(co.siret):''}${co.adresse?' — '+esc(co.adresse):''}${co.telephone?' — Tél. '+esc(co.telephone):''}${co.email?' — '+esc(co.email):''}${co.assurance?' — Assurance décennale : '+esc(co.assurance):''}</div>
+  </div>`;
+}
 function pdfOpts(){ return {margin:8,filename:_curDoc.filename||'document.pdf',image:{type:'jpeg',quality:0.96},html2canvas:{scale:2,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}; }
 window.dlPdf=async()=>{
   const el=document.getElementById('doc-el');
@@ -931,61 +991,16 @@ window.shareDoc=async()=>{
 
 window.openDoc = id=>{
   const d=S.devis.find(x=>x.id===id); if(!d)return;
-  const co=S.company; const lignes=(d.devis_lignes||[]).sort((a,b)=>a.ordre-b.ordre);
-  const rows=lignes.map(l=>`<tr><td><div class="cat">${esc(l.categorie)}</div>${ligneDetail(l)}</td><td class="r"><span class="mont">${eur(l.montant)}</span></td></tr>`).join('');
-  const matNote = d.materiel_fourni_par==='client'
-    ? `<div class="doc-note">Matériaux fournis par le client — le présent devis chiffre la main-d'œuvre (pose) uniquement.</div>`:'';
-  const legal = co.tva_applicable
-    ? `TVA incluse selon la réglementation en vigueur.`
-    : `TVA non applicable, art. 293 B du CGI.`;
-  const clientEmail = (S.clients.find(c=>c.id===d.client_id)||{}).email||'';
-  _curDoc={ title:`Devis ${d.numero}`, filename:`Devis-${d.numero}.pdf`, clientEmail,
+  const co=S.company; const client=S.clients.find(c=>c.id===d.client_id)||{};
+  const lignes=(d.devis_lignes||[]).slice().sort((a,b)=>a.ordre-b.ordre);
+  _curDoc={ title:`Devis ${d.numero}`, filename:`Devis-${d.numero}.pdf`, clientEmail:client.email||'',
     subject:`Devis ${d.numero} — ${co.nom||'Batix'}`,
     body:`Bonjour,\n\nVeuillez trouver ci-joint votre devis ${d.numero}.\nN'hésitez pas si vous avez des questions.\n\nCordialement,\n${co.nom||''}` };
-  $('#doc-wrap').innerHTML = `
-    <div class="doc-toolbar">
-      <button class="btn ghost sm" onclick="closeDoc()">Fermer</button>
-      <button class="btn ghost sm" onclick="dlPdf()">PDF</button>
-      <button class="btn sm" onclick="shareDoc()">Envoyer</button>
-    </div>
-    <div class="doc" id="doc-el">
-      <div class="doc-top">
-        <div>
-          <div class="doc-brand">${esc(co.nom||'')}</div>
-          <div class="doc-co">
-            ${co.adresse?esc(co.adresse)+'<br>':''}
-            ${co.telephone?'Tél : '+esc(co.telephone)+'<br>':''}
-            ${co.email?esc(co.email)+'<br>':''}
-            ${co.siret?'SIRET : '+esc(co.siret):''}
-          </div>
-        </div>
-        <div class="doc-meta">
-          <div class="big">DEVIS</div>
-          <div>${esc(d.numero)}</div>
-          <div>${fdate(d.date_devis)}</div>
-        </div>
-      </div>
-      <div class="doc-parties">
-        <div></div>
-        <div class="to"><div class="lab">Client</div><b>${esc(d.clients?.nom||'')}</b></div>
-      </div>
-      <table>
-        <thead><tr><th>Désignation</th><th class="r">Montant</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <div class="doc-tot"><div class="box">
-        <div class="lgrid grand"><span>Total à payer</span><span>${eur(d.total)}</span></div>
-      </div></div>
-      ${matNote}
-      ${d.notes?`<div class="doc-note">${esc(d.notes)}</div>`:''}
-      <div class="doc-legal">${legal}<br>Devis valable 30 jours. Bon pour accord : date et signature du client.</div>
-      <div class="doc-sign">
-        <div class="b">Bon pour accord (client)<div class="line"></div></div>
-        <div class="b">${esc(co.nom||'')}<div class="line"></div></div>
-      </div>
-    </div>`;
-  $('#doc-wrap').classList.remove('hidden');
-  document.body.style.overflow='hidden';
+  const inner=buildDocHTML('devis',{ numero:d.numero, date:d.date_devis, duree:d.duree_estimee,
+    valide:addMonthsFr(d.date_devis,3), clientNom:d.clients?.nom||client.nom||'', clientAdresse:client.adresse||'',
+    desc:d.description_chantier, lignes, total:+d.total||0, acomptePct:+d.acompte_pct||0, materiel:d.materiel_fourni_par });
+  $('#doc-wrap').innerHTML = docToolbar()+inner;
+  $('#doc-wrap').classList.remove('hidden'); document.body.style.overflow='hidden';
 };
 window.closeDoc=()=>{$('#doc-wrap').classList.add('hidden');$('#doc-wrap').innerHTML='';document.body.style.overflow='';};
 
@@ -1192,13 +1207,26 @@ function viewSettings(){
           <option value="true" ${c.tva_applicable?'selected':''}>TVA applicable</option>
         </select></label>
       <label class="fld"><span>Taux de cotisations (%) — pour la Comptabilité</span><input class="inp" id="s-taux" type="number" step="0.1" value="${c.taux_cotisation!=null?c.taux_cotisation:21.2}"></label>
+      <div class="grid2">
+        <label class="fld"><span>RCS / mentions</span><input class="inp" id="s-rcs" placeholder="Ex : RCS Marseille 850 263 989" value="${esc(c.rcs||'')}"></label>
+        <label class="fld"><span>Titulaire du compte</span><input class="inp" id="s-titul" placeholder="Ex : NOVIKOV ARSEN (EI)" value="${esc(c.titulaire_compte||'')}"></label>
+      </div>
+      <div class="grid2">
+        <label class="fld"><span>IBAN</span><input class="inp" id="s-iban" placeholder="FR76…" value="${esc(c.iban||'')}"></label>
+        <label class="fld"><span>BIC</span><input class="inp" id="s-bic" placeholder="CMCIFRPP" value="${esc(c.bic||'')}"></label>
+      </div>
+      <label class="fld"><span>Modes de paiement</span><input class="inp" id="s-modes" placeholder="Virement bancaire   ·   Chèque" value="${esc(c.modes_paiement||'')}"></label>
+      <label class="fld"><span>Assurance décennale (compagnie + n° contrat)</span><input class="inp" id="s-assur" placeholder="Ex : AXA — n° 12345678" value="${esc(c.assurance||'')}"></label>
       <div class="editor-actions"><button class="btn" id="s-save">Enregistrer</button></div>
     </div>`;
   $('#s-save').onclick=async()=>{
     const btn=$('#s-save');btn.disabled=true;btn.textContent='…';
     const body={nom:$('#s-nom').value.trim(),siret:$('#s-siret').value.trim(),adresse:$('#s-adr').value.trim(),
       telephone:$('#s-tel').value.trim(),email:$('#s-mail').value.trim(),tva_applicable:$('#s-tva').value==='true',
-      taux_cotisation:parseFloat($('#s-taux').value)||0};
+      taux_cotisation:parseFloat($('#s-taux').value)||0,
+      rcs:$('#s-rcs').value.trim()||null,titulaire_compte:$('#s-titul').value.trim()||null,
+      iban:$('#s-iban').value.trim()||null,bic:$('#s-bic').value.trim()||null,
+      modes_paiement:$('#s-modes').value.trim()||null,assurance:$('#s-assur').value.trim()||null};
     try{
       const r=await db('companies',{method:'PATCH',query:`?id=eq.${c.id}`,prefer:'return=representation',body});
       S.company=r[0]; $('#w-co').textContent=S.company.nom;
