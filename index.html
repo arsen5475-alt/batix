@@ -571,6 +571,7 @@ function viewDash(){
             <button class="btn ghost sm" onclick="openDepenses('${d.id}')">Chantier</button>
             ${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepté</button>`:
               (invoiced.has(d.id)?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Créer facture</button>`)}
+            <button class="btn ghost sm" onclick="delDevis('${d.id}')">Suppr.</button>
           </div>
         </div>
       </div>`).join('')}` 
@@ -588,6 +589,12 @@ function viewDash(){
 window.setStatut = async (id,st)=>{
   await db('devis',{method:'PATCH',query:`?id=eq.${id}`,body:{statut:st}});
   const d=S.devis.find(x=>x.id===id); if(d)d.statut=st; viewDash();
+};
+window.delDevis = async (id)=>{
+  const d=S.devis.find(x=>x.id===id);
+  if(!confirm(`Supprimer le devis ${d?d.numero:''} ?\nCette action est définitive (les postes du devis seront supprimés).`)) return;
+  try{ await db('devis',{method:'DELETE',query:`?id=eq.${id}`}); await loadData(); viewDash(); }
+  catch(e){ alert(e.message); }
 };
 
 /* ---- EDITOR ---- */
@@ -963,7 +970,7 @@ function buildDocHTML(kind,o){
     <div class="dfoot">${esc(co.nom||'')}${co.siret?' — SIRET '+esc(co.siret):''}${co.adresse?' — '+esc(co.adresse):''}${co.telephone?' — Tél. '+esc(co.telephone):''}${co.email?' — '+esc(co.email):''}${co.assurance?' — Assurance décennale : '+esc(co.assurance):''}</div>
   </div>`;
 }
-function pdfOpts(){ return {margin:8,filename:_curDoc.filename||'document.pdf',image:{type:'jpeg',quality:0.96},html2canvas:{scale:2,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}; }
+function pdfOpts(){ return {margin:8,filename:_curDoc.filename||'document.pdf',image:{type:'jpeg',quality:0.96},html2canvas:{scale:2,backgroundColor:'#ffffff',useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}; }
 window.dlPdf=async()=>{
   const el=document.getElementById('doc-el');
   if(!el||typeof html2pdf==='undefined'){ window.print(); return; }
