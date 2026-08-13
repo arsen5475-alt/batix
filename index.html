@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 :root{
   --bg:#0A0E1C;
@@ -182,6 +183,7 @@ textarea.inp{resize:vertical;min-height:64px}
 .cal-ev .ti{font-weight:600}
 .cal-ev .no{color:var(--muted);font-size:12.5px;margin-top:2px}
 .cal-ev .hh{color:var(--accent-soft);font-size:12px;font-family:'Space Grotesk';font-weight:600;white-space:nowrap}
+.evtag{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-dim);color:var(--accent-soft);margin-left:8px;vertical-align:middle}
 @media(max-width:820px){ .cal-grid{gap:4px} .cal-cell{padding:4px;border-radius:8px} .cal-cell .dn{font-size:12px} }
 
 /* ---------- home / accueil ---------- */
@@ -854,12 +856,17 @@ window.openFacture = id=>{
     : `<tr><td><div class="cat">Prestation</div>${dv?`<div class="desc">Selon devis ${esc(dv.numero)}</div>`:''}</td><td class="r"><span class="mont">${eur(f.total)}</span></td></tr>`;
   const legal = co.tva_applicable ? `TVA incluse selon la réglementation en vigueur.` : `TVA non applicable, art. 293 B du CGI.`;
   const paid = f.statut==='payee';
+  const clientEmail=(S.clients.find(c=>c.id===f.client_id)||{}).email||'';
+  _curDoc={ title:`Facture ${f.numero}`, filename:`Facture-${f.numero}.pdf`, clientEmail,
+    subject:`Facture ${f.numero} — ${co.nom||'Batix'}`,
+    body:`Bonjour,\n\nVeuillez trouver ci-joint votre facture ${f.numero}.\n\nCordialement,\n${co.nom||''}` };
   $('#doc-wrap').innerHTML = `
     <div class="doc-toolbar">
       <button class="btn ghost sm" onclick="closeDoc()">Fermer</button>
-      <button class="btn sm" onclick="window.print()">Imprimer / PDF</button>
+      <button class="btn ghost sm" onclick="dlPdf()">PDF</button>
+      <button class="btn sm" onclick="shareDoc()">Envoyer</button>
     </div>
-    <div class="doc">
+    <div class="doc" id="doc-el">
       <div class="doc-top">
         <div>
           <div class="doc-brand">${esc(co.nom||'')}</div>
@@ -895,6 +902,33 @@ window.openFacture = id=>{
 };
 
 /* ---- DOC / PRINT ---- */
+let _curDoc={};
+function pdfOpts(){ return {margin:8,filename:_curDoc.filename||'document.pdf',image:{type:'jpeg',quality:0.96},html2canvas:{scale:2,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}; }
+window.dlPdf=async()=>{
+  const el=document.getElementById('doc-el');
+  if(!el||typeof html2pdf==='undefined'){ window.print(); return; }
+  try{ await html2pdf().set(pdfOpts()).from(el).save(); }catch(e){ window.print(); }
+};
+window.shareDoc=async()=>{
+  const el=document.getElementById('doc-el');
+  try{
+    if(el && typeof html2pdf!=='undefined' && navigator.canShare){
+      const blob=await html2pdf().set(pdfOpts()).from(el).outputPdf('blob');
+      const file=new File([blob],_curDoc.filename||'document.pdf',{type:'application/pdf'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:_curDoc.title,text:_curDoc.body});
+        return;
+      }
+    }
+  }catch(e){ if(e&&e.name==='AbortError') return; }
+  // fallback : télécharger le PDF puis ouvrir l'email
+  await dlPdf();
+  const to=encodeURIComponent(_curDoc.clientEmail||'');
+  const su=encodeURIComponent(_curDoc.subject||'');
+  const bo=encodeURIComponent((_curDoc.body||'')+'\n\n(PDF en pièce jointe — joignez le fichier téléchargé.)');
+  setTimeout(()=>{ location.href=`mailto:${to}?subject=${su}&body=${bo}`; },400);
+};
+
 window.openDoc = id=>{
   const d=S.devis.find(x=>x.id===id); if(!d)return;
   const co=S.company; const lignes=(d.devis_lignes||[]).sort((a,b)=>a.ordre-b.ordre);
@@ -904,12 +938,17 @@ window.openDoc = id=>{
   const legal = co.tva_applicable
     ? `TVA incluse selon la réglementation en vigueur.`
     : `TVA non applicable, art. 293 B du CGI.`;
+  const clientEmail = (S.clients.find(c=>c.id===d.client_id)||{}).email||'';
+  _curDoc={ title:`Devis ${d.numero}`, filename:`Devis-${d.numero}.pdf`, clientEmail,
+    subject:`Devis ${d.numero} — ${co.nom||'Batix'}`,
+    body:`Bonjour,\n\nVeuillez trouver ci-joint votre devis ${d.numero}.\nN'hésitez pas si vous avez des questions.\n\nCordialement,\n${co.nom||''}` };
   $('#doc-wrap').innerHTML = `
     <div class="doc-toolbar">
       <button class="btn ghost sm" onclick="closeDoc()">Fermer</button>
-      <button class="btn sm" onclick="window.print()">Imprimer / PDF</button>
+      <button class="btn ghost sm" onclick="dlPdf()">PDF</button>
+      <button class="btn sm" onclick="shareDoc()">Envoyer</button>
     </div>
-    <div class="doc" id="doc">
+    <div class="doc" id="doc-el">
       <div class="doc-top">
         <div>
           <div class="doc-brand">${esc(co.nom||'')}</div>
@@ -1061,17 +1100,23 @@ function viewAgenda(){
           <div class="dn">${c.d}</div><div class="dots">${dots}</div></div>`;
       }).join('');
   const selEvs=(byDate[_calSel]||[]).sort((a,b)=>(a.heure||'').localeCompare(b.heure||''));
-  const selList=selEvs.length?selEvs.map(e=>`
+  const evMeta=(e)=>{
+    const dv=e.devis_id?S.devis.find(x=>x.id===e.devis_id):null;
+    const tag=dv?`<span class="evtag">Chantier</span>`:'';
+    const sub=[]; if(dv){ if(dv.clients?.nom) sub.push(esc(dv.clients.nom)); sub.push(esc(dv.numero)); } if(e.note) sub.push(esc(e.note));
+    return {tag,sub:sub.join(' · ')};
+  };
+  const selList=selEvs.length?selEvs.map(e=>{const {tag,sub}=evMeta(e);return `
     <div class="cal-ev">
-      <div><div class="ti">${esc(e.titre)}</div>${e.note?`<div class="no">${esc(e.note)}</div>`:''}</div>
+      <div><div class="ti">${esc(e.titre)}${tag}</div>${sub?`<div class="no">${sub}</div>`:''}</div>
       <div style="display:flex;align-items:center;gap:10px">${e.heure?`<span class="hh">${esc(e.heure)}</span>`:''}<button class="btn ghost sm" onclick="delEvent('${e.id}')">✕</button></div>
-    </div>`).join(''):`<div class="empty" style="padding:26px"><b>Rien ce jour</b>Ajoutez un rendez-vous ci-dessous.</div>`;
+    </div>`;}).join(''):`<div class="empty" style="padding:26px"><b>Rien ce jour</b>Ajoutez un rendez-vous ci-dessous.</div>`;
   const upcoming=S.events.filter(e=>e.date_event>=todayS).sort((a,b)=>a.date_event.localeCompare(b.date_event)||(a.heure||'').localeCompare(b.heure||'')).slice(0,6);
-  const upList=upcoming.length?upcoming.map(e=>`
+  const upList=upcoming.length?upcoming.map(e=>{const {tag,sub}=evMeta(e);return `
     <div class="cal-ev">
-      <div><div class="ti">${esc(e.titre)}</div><div class="no">${new Date(e.date_event+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}${e.heure?' · '+esc(e.heure):''}</div></div>
+      <div><div class="ti">${esc(e.titre)}${tag}</div><div class="no">${new Date(e.date_event+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}${e.heure?' · '+esc(e.heure):''}${sub?' · '+sub:''}</div></div>
       <button class="btn ghost sm" onclick="calGoTo('${e.date_event}')">Voir</button>
-    </div>`).join(''):`<div class="empty" style="padding:26px"><b>Aucun rendez-vous à venir</b></div>`;
+    </div>`;}).join(''):`<div class="empty" style="padding:26px"><b>Aucun rendez-vous à venir</b></div>`;
   const selLabel=new Date(_calSel+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   $('#view').innerHTML=`
     <div class="sec-head"><h2>Agenda</h2></div>
@@ -1095,6 +1140,10 @@ function viewAgenda(){
         <label class="fld"><span>Titre</span><input class="inp" id="ev-titre" placeholder="Ex : Visite chantier Dupont"></label>
         <label class="fld"><span>Heure (optionnel)</span><input class="inp" id="ev-h" type="time"></label>
       </div>
+      <label class="fld"><span>Lié à un chantier (optionnel)</span>
+        <select class="inp" id="ev-devis"><option value="">— Aucun (rendez-vous simple) —</option>
+          ${S.devis.map(d=>`<option value="${d.id}">${esc(d.numero)} — ${esc(d.clients?.nom||'')}</option>`).join('')}
+        </select></label>
       <label class="fld"><span>Note (optionnel)</span><input class="inp" id="ev-note" placeholder="Adresse, détails…"></label>
       <div class="editor-actions"><button class="btn" id="ev-add" onclick="addEvent()">Ajouter</button></div>
     </div>
@@ -1106,11 +1155,13 @@ window.calToday=()=>{ const n=new Date(); _calY=n.getFullYear(); _calM=n.getMont
 window.calPick=(date)=>{ _calSel=date; viewAgenda(); };
 window.calGoTo=(date)=>{ const d=new Date(date+'T00:00:00'); _calY=d.getFullYear(); _calM=d.getMonth(); _calSel=date; viewAgenda(); window.scrollTo(0,0); };
 window.addEvent=async()=>{
-  const titre=$('#ev-titre').value.trim(), h=$('#ev-h').value, note=$('#ev-note').value.trim();
+  let titre=$('#ev-titre').value.trim(); const h=$('#ev-h').value, note=$('#ev-note').value.trim();
+  const dvId=$('#ev-devis').value;
+  if(!titre && dvId) titre='Début du chantier';
   if(!titre){ $('#ev-msg').innerHTML='<div class="msg err">Indiquez un titre.</div>'; return; }
   const btn=$('#ev-add'); btn.disabled=true; btn.textContent='…';
   try{
-    const r=await db('events',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,titre,date_event:_calSel,heure:h||null,note:note||null}});
+    const r=await db('events',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,titre,date_event:_calSel,heure:h||null,note:note||null,devis_id:dvId||null,type:dvId?'chantier':'rdv'}});
     S.events.push(r[0]); viewAgenda();
   }catch(e){ $('#ev-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter'; }
 };
