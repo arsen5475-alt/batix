@@ -1012,13 +1012,12 @@ window.openFacture = id=>{
   const inner=buildDocHTML('facture',{ numero:f.numero, date:f.date_facture, refDevis:dv?dv.numero:'',
     clientNom:f.clients?.nom||client.nom||'', clientAdresse:client.adresse||'',
     desc:dv?dv.description_chantier:'', lignes, total:+f.total||0, paid:f.statut==='payee' });
-  $('#doc-wrap').innerHTML = docToolbar()+inner;
-  $('#doc-wrap').classList.remove('hidden'); document.body.style.overflow='hidden';
+  showDocWrap(inner);
 };
 
 /* ---- DOC / PRINT ---- */
 let _curDoc={};
-function docToolbar(){ return `<div class="doc-toolbar"><button class="btn ghost sm" onclick="closeDoc()">Fermer</button><button class="btn ghost sm" onclick="dlPdf()">PDF</button><button class="btn sm" onclick="shareDoc()">Envoyer</button></div>`; }
+function docToolbar(){ return `<div class="doc-toolbar"><button type="button" class="btn ghost sm" data-close-doc>Fermer</button><button type="button" class="btn ghost sm" onclick="dlPdf()">PDF</button><button type="button" class="btn sm" onclick="shareDoc()">Envoyer</button></div>`; }
 function addMonthsFr(ds,n){ if(!ds)return''; const d=new Date(ds+'T00:00:00'); d.setMonth(d.getMonth()+n); return d.toLocaleDateString('fr-FR'); }
 function eurOrDash(v){ return (v!=null&&v!=='')?eur(v):'—'; }
 function buildDocHTML(kind,o){
@@ -1113,10 +1112,42 @@ window.openDoc = id=>{
   const inner=buildDocHTML('devis',{ numero:d.numero, date:d.date_devis, duree:d.duree_estimee,
     valide:addMonthsFr(d.date_devis,3), clientNom:d.clients?.nom||client.nom||'', clientAdresse:client.adresse||'',
     desc:d.description_chantier, lignes, total:+d.total||0, acomptePct:+d.acompte_pct||0, materiel:d.materiel_fourni_par });
-  $('#doc-wrap').innerHTML = docToolbar()+inner;
-  $('#doc-wrap').classList.remove('hidden'); document.body.style.overflow='hidden';
+  showDocWrap(inner);
 };
-window.closeDoc=()=>{$('#doc-wrap').classList.add('hidden');$('#doc-wrap').innerHTML='';document.body.style.overflow='';};
+
+function showDocWrap(inner){
+  const wrap=document.getElementById('doc-wrap');
+  if(!wrap)return;
+  wrap.innerHTML=docToolbar()+inner;
+  wrap.classList.remove('hidden');
+  wrap.style.display='block';
+  document.body.style.overflow='hidden';
+
+  // Sécurité : le bouton Fermer fonctionne même si l'inline onclick est bloqué.
+  const closeBtn=wrap.querySelector('[data-close-doc]');
+  if(closeBtn) closeBtn.addEventListener('click',closeDoc);
+}
+
+window.closeDoc=function(){
+  const wrap=document.getElementById('doc-wrap');
+  if(!wrap)return;
+  wrap.classList.add('hidden');
+  wrap.style.display='none';
+  wrap.innerHTML='';
+  document.body.style.overflow='';
+};
+
+// Fermer avec Échap ou en cliquant sur le fond sombre.
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const wrap=document.getElementById('doc-wrap');
+    if(wrap && !wrap.classList.contains('hidden')) closeDoc();
+  }
+});
+document.addEventListener('click',e=>{
+  const wrap=document.getElementById('doc-wrap');
+  if(wrap && e.target===wrap) closeDoc();
+});
 
 /* ---- CLIENTS ---- */
 function clientStats(id){ const ds=S.devis.filter(d=>d.client_id===id); return {n:ds.length, tot:ds.reduce((s,d)=>s+(+d.total||0),0)}; }
