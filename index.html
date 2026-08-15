@@ -421,6 +421,7 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
       <button data-view="factures">Factures</button>
       <button data-view="compta">Comptabilité</button>
       <button data-view="clients">Clients</button>
+      <button data-view="biblio">Bibliothèque</button>
       <button data-view="carte">Carte</button>
       <button data-view="settings">Mon entreprise</button><button onclick="openProStudio()" class="pro-nav">⚡ Batix Pro</button>
     </div>
@@ -442,6 +443,7 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
 <div id="cmd" class="hidden" style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.62);backdrop-filter:blur(7px);padding:10vh 18px 18px"><div style="max-width:650px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.55);overflow:hidden"><input id="cmd-input" class="inp" style="border:0;border-bottom:1px solid var(--line);border-radius:0;padding:18px;font-size:16px" placeholder="Rechercher une action… (Échap pour fermer)"><div id="cmd-list" style="padding:8px"></div></div></div>
 
 <div id="doc-wrap" class="hidden"></div>
+<div id="bpick" class="hidden" style="position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);padding:8vh 18px 18px"></div>
 <div id="pro-studio" class="hidden">
   <div class="pro-shell">
     <div class="pro-head"><div><h2>⚡ Batix Pro Studio</h2><p>Modèles · marge chantier · CRM · relances · pilotage</p></div><button class="btn ghost" onclick="closeProStudio()">Fermer ✕</button></div>
@@ -457,7 +459,8 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
 const SUPABASE_URL = 'https://llakesuqcugmdniaqdjr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_SCBPyFQ7ktB9Znho8MM6kg_w-cphtSI';
 
-const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], mode:'signup' };
+const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], mode:'signup' };
+const TYPEL={ouvrage:'Ouvrage',materiel:'Matériel',fourniture:'Fourniture'};
 const $ = s=>document.querySelector(s);
 const eur = n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(+n||0);
 const esc = s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -629,6 +632,7 @@ function go(v){
   if(v==='compta') viewCompta();
   if(v==='factures') viewFactures();
   if(v==='clients') viewClients();
+  if(v==='biblio') viewBiblio();
   if(v==='carte') viewCarte();
   if(v==='settings') viewSettings();
   if(v==='editor') viewEditor();
@@ -641,6 +645,7 @@ async function loadData(){
   S.clients = await db('clients',{query:`?select=*&company_id=eq.${S.company.id}&order=nom`});
   S.depenses = await db('depenses',{query:`?select=*&company_id=eq.${S.company.id}&order=date_depense.desc`});
   S.events = await db('events',{query:`?select=*&company_id=eq.${S.company.id}&order=date_event`});
+  S.biblio = await db('bibliotheque',{query:`?select=*&company_id=eq.${S.company.id}&order=designation`});
 }
 
 /* ---- DASHBOARD ---- */
@@ -743,6 +748,7 @@ function viewEditor(){
       <div class="lignes-head"><div>Catégorie</div><div>Description</div><div>Qté</div><div>Unité</div><div>P.U.</div><div>Montant</div><div></div></div>
       <div id="e-lignes"></div>
       <button class="btn ghost sm" onclick="addLigne()" style="margin-top:4px">+ Ajouter un poste</button>
+      <button class="btn ghost sm" onclick="openBiblioPick()" style="margin-top:4px;margin-left:6px">+ depuis la bibliothèque</button>
       <div class="tot-line"><div class="lab">Total ${S.company.tva_applicable?'TTC':'(TVA non applicable)'}</div><div class="val" id="e-total">${eur(0)}</div></div>
     </div>
 
@@ -824,7 +830,8 @@ const IC={
   fac:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>`,
   clients:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><path d="M16 5a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>`,
   map:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>`,
-  co:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M8 8V5a2 2 0 012-2h4a2 2 0 012 2v3"/></svg>`
+  co:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M8 8V5a2 2 0 012-2h4a2 2 0 012 2v3"/></svg>`,
+  biblio:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2z"/><path d="M8 3v18"/></svg>`
 };
 function viewAccueil(){
   $('#view').innerHTML=`
@@ -839,6 +846,7 @@ function viewAccueil(){
       <div class="tile" onclick="go('compta')"><div class="ic">${IC.compta}</div><div class="tt">Comptabilité</div><div class="ts">Recettes, impayés, cotisations</div></div>
       <div class="tile" onclick="go('factures')"><div class="ic">${IC.fac}</div><div class="tt">Factures</div><div class="ts">Suivi des paiements</div></div>
       <div class="tile" onclick="go('clients')"><div class="ic">${IC.clients}</div><div class="tt">Clients</div><div class="ts">Fiches & recherche</div></div>
+      <div class="tile" onclick="go('biblio')"><div class="ic">${IC.biblio}</div><div class="tt">Bibliothèque</div><div class="ts">Vos prix réutilisables</div></div>
       <div class="tile" onclick="go('carte')"><div class="ic">${IC.map}</div><div class="tt">Carte</div><div class="ts">Clients par adresse</div></div>
       <div class="tile" onclick="go('settings')"><div class="ic">${IC.co}</div><div class="tt">Mon entreprise</div><div class="ts">Infos & TVA</div></div>
     </div>`;
@@ -1325,6 +1333,73 @@ window.addEvent=async()=>{
 };
 window.delEvent=async(id)=>{
   try{ await db('events',{method:'DELETE',query:`?id=eq.${id}`}); S.events=S.events.filter(x=>x.id!==id); viewAgenda(); }catch(e){}
+};
+
+/* ---- BIBLIOTHEQUE ---- */
+let _bfilter='tous', _bq='';
+function viewBiblio(){
+  const items=S.biblio.filter(b=>(_bfilter==='tous'||b.type===_bfilter)&&(!_bq||(b.designation||'').toLowerCase().includes(_bq.toLowerCase())||(b.description||'').toLowerCase().includes(_bq.toLowerCase())));
+  const tabs=[['tous','Tous'],['ouvrage','Ouvrages'],['materiel','Matériaux'],['fourniture','Fournitures']].map(t=>`<button class="btn ${_bfilter===t[0]?'':'ghost'} sm" onclick="setBFilter('${t[0]}')">${t[1]}</button>`).join('');
+  const rows=items.length?items.map(b=>`<div class="row" style="grid-template-columns:1.6fr auto auto auto">
+    <div class="n" style="font-family:inherit;font-weight:500">${esc(b.designation)}${b.description?`<div style="color:var(--faint);font-size:12px">${esc(b.description)}</div>`:''}</div>
+    <div class="muted" style="font-size:12px">${esc(TYPEL[b.type]||b.type)} · ${esc(b.unite||'')}</div>
+    <div class="t">${eur(b.prix_unitaire)}</div>
+    <div class="act"><button class="btn ghost sm" onclick="editBiblio('${b.id}')">Éditer</button><button class="btn ghost sm" onclick="delBiblio('${b.id}')">✕</button></div>
+  </div>`).join(''):`<div class="empty"><b>${(_bq||_bfilter!=='tous')?'Aucun article':'Bibliothèque vide'}</b>Ajoutez vos ouvrages et matériaux avec leurs prix, réutilisables dans chaque devis.</div>`;
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Bibliothèque de prix</h2><button class="btn" onclick="editBiblio()">+ Nouvel article</button></div>
+    <div class="toolbar-pro"><input class="inp search" id="b-search" placeholder="Rechercher un article…" value="${esc(_bq)}"><div style="display:flex;gap:6px;flex-wrap:wrap">${tabs}</div></div>
+    <div class="card">${rows}</div>`;
+  const s=$('#b-search'); if(s) s.oninput=()=>{ const p=s.selectionStart; _bq=s.value; viewBiblio(); const n=$('#b-search'); n.focus(); n.setSelectionRange(p,p); };
+}
+window.setBFilter=(f)=>{ _bfilter=f; viewBiblio(); };
+window.editBiblio=(id)=>{
+  const b=id?S.biblio.find(x=>x.id===id):{type:'ouvrage',unite:'m²'};
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>${id?"Modifier l'article":'Nouvel article'}</h2><button class="btn ghost" onclick="go('biblio')">← Retour</button></div>
+    <div id="bf-msg"></div>
+    <div class="panel">
+      <div class="grid2">
+        <label class="fld"><span>Type</span><select class="inp" id="bf-type">${['ouvrage','materiel','fourniture'].map(t=>`<option value="${t}" ${b.type===t?'selected':''}>${TYPEL[t]}</option>`).join('')}</select></label>
+        <label class="fld"><span>Unité</span><select class="inp" id="bf-unite">${['m²','ml','u','h','forfait'].map(u=>`<option ${b.unite===u?'selected':''}>${u}</option>`).join('')}</select></label>
+      </div>
+      <label class="fld"><span>Désignation</span><input class="inp" id="bf-des" value="${esc(b.designation||'')}" placeholder="Ex : Pose carrelage sol"></label>
+      <label class="fld"><span>Description (optionnel)</span><input class="inp" id="bf-desc" value="${esc(b.description||'')}" placeholder="Ex : colle + joints compris"></label>
+      <label class="fld"><span>Prix unitaire (€)</span><input class="inp" id="bf-prix" type="number" step="0.01" value="${b.prix_unitaire??''}"></label>
+      <div class="editor-actions"><button class="btn" id="bf-save">Enregistrer</button></div>
+    </div>`;
+  $('#bf-save').onclick=async()=>{
+    const des=$('#bf-des').value.trim(); if(!des){$('#bf-msg').innerHTML='<div class="msg err">La désignation est requise.</div>';return;}
+    const btn=$('#bf-save');btn.disabled=true;btn.textContent='…';
+    const body={type:$('#bf-type').value,unite:$('#bf-unite').value,designation:des,description:$('#bf-desc').value.trim()||null,prix_unitaire:parseFloat($('#bf-prix').value)||0};
+    try{
+      if(id){ const r=await db('bibliotheque',{method:'PATCH',query:`?id=eq.${id}`,prefer:'return=representation',body}); Object.assign(S.biblio.find(x=>x.id===id),r[0]); }
+      else{ body.company_id=S.company.id; const r=await db('bibliotheque',{method:'POST',prefer:'return=representation',body}); S.biblio.push(r[0]); }
+      go('biblio');
+    }catch(e){$('#bf-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`;btn.disabled=false;btn.textContent='Enregistrer';}
+  };
+};
+window.delBiblio=async(id)=>{ if(!confirm('Supprimer cet article ?'))return; try{ await db('bibliotheque',{method:'DELETE',query:`?id=eq.${id}`}); S.biblio=S.biblio.filter(x=>x.id!==id); viewBiblio(); }catch(e){alert(e.message);} };
+
+/* library picker inside the devis editor */
+window.openBiblioPick=()=>{ if(!ED)return; $('#bpick').classList.remove('hidden'); renderBpick(''); };
+function closeBpick(){ $('#bpick').classList.add('hidden'); $('#bpick').innerHTML=''; }
+window.closeBpick=closeBpick;
+function renderBpick(q){
+  const list=S.biblio.filter(b=>!q||(b.designation||'').toLowerCase().includes(q.toLowerCase())||(b.description||'').toLowerCase().includes(q.toLowerCase()));
+  $('#bpick').innerHTML=`<div style="max-width:620px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.55)">
+    <div style="display:flex;gap:8px;padding:14px;border-bottom:1px solid var(--line)"><input id="bpick-q" class="inp" placeholder="Rechercher dans la bibliothèque…" value="${esc(q)}"><button class="btn ghost sm" onclick="closeBpick()">✕</button></div>
+    <div style="max-height:60vh;overflow:auto;padding:10px">${list.length?list.map(b=>`<div class="pro-item" style="cursor:pointer" onclick="insertBiblioLine('${b.id}')"><span><b>${esc(b.designation)}</b><br><small class="muted">${esc(TYPEL[b.type]||b.type)} · ${esc(b.unite||'')}</small></span><b>${eur(b.prix_unitaire)}</b></div>`).join(''):`<div class="empty"><b>Bibliothèque vide</b>Ajoutez des articles dans l'onglet Bibliothèque.</div>`}</div>
+  </div>`;
+  const s=$('#bpick-q'); if(s){ s.oninput=()=>renderBpick(s.value); setTimeout(()=>s.focus(),20); }
+}
+window.insertBiblioLine=(id)=>{
+  const b=S.biblio.find(x=>x.id===id); if(!b||!ED)return;
+  const forfait=(b.unite==='forfait');
+  ED.lignes.push({categorie:b.designation||'',description:b.description||'',
+    quantite:forfait?'':1, unite:b.unite||'forfait',
+    prix_unitaire:forfait?'':(b.prix_unitaire||''), montant:(b.prix_unitaire||'')});
+  closeBpick(); renderLignes();
 };
 
 /* ---- SETTINGS ---- */
