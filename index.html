@@ -889,14 +889,22 @@ function viewCompta(){
     <div class="card">
       ${S.depenses.length? S.depenses.map(x=>{
         const dv=x.devis_id?S.devis.find(d=>d.id===x.devis_id):null;
-        return `<div class="row" style="grid-template-columns:1.5fr auto auto">
-          <div class="n" style="font-family:inherit;font-weight:500">${esc(x.libelle)}<div style="color:var(--faint);font-size:12px">${dv?esc(dv.numero):'Sans chantier'} · ${fdate(x.date_depense)}</div></div>
+        const link=dv?`${esc(dv.numero)} — ${esc(dv.clients?.nom||'')}`:'<span style="color:var(--warn)">Sans chantier</span>';
+        const opts=S.devis.map(d=>`<option value="${d.id}" ${x.devis_id===d.id?'selected':''}>${esc(d.numero)} — ${esc(d.clients?.nom||'')}</option>`).join('');
+        return `<div class="row" style="grid-template-columns:1.5fr 1fr auto auto">
+          <div class="n" style="font-family:inherit;font-weight:500">${esc(x.libelle)}<div style="color:var(--faint);font-size:12px">${link} · ${fdate(x.date_depense)}</div></div>
+          <div><select class="inp" style="padding:7px 10px;font-size:12px" onchange="reassignDepense('${x.id}',this.value)"><option value="">↪ Rattacher à…</option>${opts}</select></div>
           <div class="t">${eur(x.montant)}</div>
           <div><button class="btn ghost sm" onclick="delDepenseC('${x.id}')">✕</button></div>
         </div>`;}).join('')
       : '<div class="empty"><b>Aucune dépense</b>Ajoutez des matériaux depuis un chantier.</div>'}
     </div>`;
 }
+window.reassignDepense=async(id,devisId)=>{
+  if(!devisId) return;
+  try{ await db('depenses',{method:'PATCH',query:`?id=eq.${id}`,body:{devis_id:devisId}}); const x=S.depenses.find(d=>d.id===id); if(x)x.devis_id=devisId; viewCompta(); }
+  catch(e){ alert(e.message); }
+};
 window.delDepenseC=async(id)=>{
   if(!confirm('Supprimer cette dépense ?')) return;
   try{ await db('depenses',{method:'DELETE',query:`?id=eq.${id}`}); S.depenses=S.depenses.filter(x=>x.id!==id); viewCompta(); }
