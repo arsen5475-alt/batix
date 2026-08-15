@@ -213,7 +213,7 @@ textarea.inp{resize:vertical;min-height:64px}
 
 /* ---------- devis document (print) ---------- */
 #doc-wrap{background:rgba(0,0,0,.55);position:fixed;inset:0;z-index:40;overflow:auto;padding:30px 16px}
-.doc-toolbar{max-width:760px;margin:0 auto 14px;display:flex;gap:10px;justify-content:flex-end}
+.doc-toolbar{max-width:760px;margin:0 auto 14px;display:flex;gap:10px;justify-content:flex-end;position:sticky;top:0;z-index:3;padding:4px 0}
 .doc{max-width:760px;margin:0 auto;background:#fff;color:#1a1f2e;border-radius:10px;padding:46px 50px;font-size:13.5px}
 .doc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:2px solid #0A0E1C;padding-bottom:22px}
 .doc-brand{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:#0A0E1C}
@@ -692,9 +692,12 @@ window.setStatut = async (id,st)=>{
 };
 window.delDevis = async (id)=>{
   const d=S.devis.find(x=>x.id===id);
-  if(!confirm(`Supprimer le devis ${d?d.numero:''} ?\nCette action est définitive (les postes du devis seront supprimés).`)) return;
-  try{ await db('devis',{method:'DELETE',query:`?id=eq.${id}`}); await loadData(); viewDash(); }
-  catch(e){ alert(e.message); }
+  if(!confirm(`Supprimer le devis ${d?d.numero:''} ?\nCette action est définitive (les postes et les dépenses de ce chantier seront supprimés).`)) return;
+  try{
+    await db('depenses',{method:'DELETE',query:`?devis_id=eq.${id}`});
+    await db('devis',{method:'DELETE',query:`?id=eq.${id}`});
+    await loadData(); viewDash();
+  }catch(e){ alert(e.message); }
 };
 
 /* ---- EDITOR ---- */
@@ -881,8 +884,24 @@ function viewCompta(){
     <div class="card">
       ${paid.length?`<div class="list-head"><div>Facture</div><div class="c">Client</div><div class="d">Date</div><div></div><div class="t">Encaissé</div></div>`:''}
       ${lignes}
+    </div>
+    <div class="sec-head"><h2>Dépenses</h2><span class="muted">${S.depenses.length} ligne(s)</span></div>
+    <div class="card">
+      ${S.depenses.length? S.depenses.map(x=>{
+        const dv=x.devis_id?S.devis.find(d=>d.id===x.devis_id):null;
+        return `<div class="row" style="grid-template-columns:1.5fr auto auto">
+          <div class="n" style="font-family:inherit;font-weight:500">${esc(x.libelle)}<div style="color:var(--faint);font-size:12px">${dv?esc(dv.numero):'Sans chantier'} · ${fdate(x.date_depense)}</div></div>
+          <div class="t">${eur(x.montant)}</div>
+          <div><button class="btn ghost sm" onclick="delDepenseC('${x.id}')">✕</button></div>
+        </div>`;}).join('')
+      : '<div class="empty"><b>Aucune dépense</b>Ajoutez des matériaux depuis un chantier.</div>'}
     </div>`;
 }
+window.delDepenseC=async(id)=>{
+  if(!confirm('Supprimer cette dépense ?')) return;
+  try{ await db('depenses',{method:'DELETE',query:`?id=eq.${id}`}); S.depenses=S.depenses.filter(x=>x.id!==id); viewCompta(); }
+  catch(e){ alert(e.message); }
+};
 
 /* ---- DÉPENSES / CHANTIER ---- */
 let _depDevis=null;
@@ -1018,7 +1037,7 @@ window.openFacture = id=>{
 
 /* ---- DOC / PRINT ---- */
 let _curDoc={};
-function docToolbar(){ return `<div class="doc-toolbar"><button class="btn ghost sm" onclick="closeDoc()">Fermer</button><button class="btn ghost sm" onclick="dlPdf()">PDF</button><button class="btn sm" onclick="shareDoc()">Envoyer</button></div>`; }
+function docToolbar(){ return `<div class="doc-toolbar"><button class="btn sm" style="background:var(--line);color:var(--ink);box-shadow:none" onclick="closeDoc()">✕ Fermer</button><button class="btn ghost sm" onclick="dlPdf()">PDF</button><button class="btn sm" onclick="shareDoc()">Envoyer</button></div>`; }
 function addMonthsFr(ds,n){ if(!ds)return''; const d=new Date(ds+'T00:00:00'); d.setMonth(d.getMonth()+n); return d.toLocaleDateString('fr-FR'); }
 function eurOrDash(v){ return (v!=null&&v!=='')?eur(v):'—'; }
 function buildDocHTML(kind,o){
@@ -1117,6 +1136,8 @@ window.openDoc = id=>{
   $('#doc-wrap').classList.remove('hidden'); document.body.style.overflow='hidden';
 };
 window.closeDoc=()=>{$('#doc-wrap').classList.add('hidden');$('#doc-wrap').innerHTML='';document.body.style.overflow='';};
+$('#doc-wrap').addEventListener('click',e=>{ if(e.target.id==='doc-wrap') closeDoc(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDoc(); });
 
 /* ---- CLIENTS ---- */
 function clientStats(id){ const ds=S.devis.filter(d=>d.client_id===id); return {n:ds.length, tot:ds.reduce((s,d)=>s+(+d.total||0),0)}; }
