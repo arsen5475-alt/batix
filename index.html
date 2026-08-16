@@ -180,6 +180,21 @@ textarea.inp{resize:vertical;min-height:64px}
 .cl-stats b{display:block;font-family:'Space Grotesk';font-weight:600;font-size:15px}
 .cl-stats span{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.03em}
 .cl-actions{display:flex;gap:6px;flex-wrap:wrap}
+.bib-card{background:linear-gradient(160deg,var(--surface-2),var(--surface));border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);transition:transform .12s,border-color .15s;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden}
+.bib-card:hover{transform:translateY(-3px);border-color:rgba(255,106,43,.42)}
+.bib-card::before{content:"";position:absolute;right:-34px;top:-34px;width:120px;height:120px;background:radial-gradient(circle,var(--accent-dim),transparent 70%);pointer-events:none}
+.bib-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative}
+.bib-badge{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 9px;border-radius:20px}
+.bib-badge.ouvrage{background:var(--accent-dim);color:var(--accent-soft)}
+.bib-badge.materiel{background:rgba(96,140,240,.16);color:#8fb4ff}
+.bib-badge.fourniture{background:rgba(61,220,151,.15);color:var(--ok)}
+.bib-unite{font-size:11px;color:var(--faint);font-family:'Space Grotesk';border:1px solid var(--line);padding:2px 8px;border-radius:20px}
+.bib-name{font-family:'Space Grotesk';font-weight:600;font-size:15px;line-height:1.3}
+.bib-desc{color:var(--muted);font-size:12.5px;flex:1}
+.bib-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:11px;margin-top:2px}
+.bib-price{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--accent-soft)}
+.bib-price small{color:var(--faint);font-weight:500;font-size:12px}
+.bib-actions{display:flex;gap:6px}
 .leaflet-container{font-family:'Inter',sans-serif}
 
 /* ---------- agenda / calendar ---------- */
@@ -1389,16 +1404,22 @@ let _bfilter='tous', _bq='';
 function viewBiblio(){
   const items=S.biblio.filter(b=>(_bfilter==='tous'||b.type===_bfilter)&&(!_bq||(b.designation||'').toLowerCase().includes(_bq.toLowerCase())||(b.description||'').toLowerCase().includes(_bq.toLowerCase())));
   const tabs=[['tous','Tous'],['ouvrage','Ouvrages'],['materiel','Matériaux'],['fourniture','Fournitures']].map(t=>`<button class="btn ${_bfilter===t[0]?'':'ghost'} sm" onclick="setBFilter('${t[0]}')">${t[1]}</button>`).join('');
-  const rows=items.length?items.map(b=>`<div class="row" style="grid-template-columns:1.6fr auto auto auto">
-    <div class="n" style="font-family:inherit;font-weight:500">${esc(b.designation)}${b.description?`<div style="color:var(--faint);font-size:12px">${esc(b.description)}</div>`:''}</div>
-    <div class="muted" style="font-size:12px">${esc(TYPEL[b.type]||b.type)} · ${esc(b.unite||'')}</div>
-    <div class="t">${eur(b.prix_unitaire)}</div>
-    <div class="act"><button class="btn ghost sm" onclick="editBiblio('${b.id}')">Éditer</button><button class="btn ghost sm" onclick="delBiblio('${b.id}')">✕</button></div>
-  </div>`).join(''):`<div class="empty"><b>${(_bq||_bfilter!=='tous')?'Aucun article':'Bibliothèque vide'}</b>Ajoutez vos ouvrages et matériaux avec leurs prix, réutilisables dans chaque devis.</div>`;
+  const rows=items.length
+    ? `<div class="clients-grid">`+items.map(b=>`
+      <div class="bib-card">
+        <div class="bib-top"><span class="bib-badge ${esc(b.type||'ouvrage')}">${esc(TYPEL[b.type]||b.type||'')}</span><span class="bib-unite">${esc(b.unite||'')}</span></div>
+        <div class="bib-name">${esc(b.designation)}</div>
+        <div class="bib-desc">${b.description?esc(b.description):''}</div>
+        <div class="bib-bottom">
+          <div class="bib-price">${eur(b.prix_unitaire)}<small>/${esc(b.unite||'u')}</small></div>
+          <div class="bib-actions"><button class="btn ghost sm" onclick="editBiblio('${b.id}')">Éditer</button><button class="btn ghost sm" onclick="delBiblio('${b.id}')">✕</button></div>
+        </div>
+      </div>`).join('')+`</div>`
+    : `<div class="card"><div class="empty"><b>${(_bq||_bfilter!=='tous')?'Aucun article':'Bibliothèque vide'}</b>Ajoutez vos ouvrages et matériaux avec leurs prix, réutilisables dans chaque devis.</div></div>`;
   $('#view').innerHTML=`
     <div class="sec-head"><h2>Bibliothèque de prix</h2><button class="btn" onclick="editBiblio()">+ Nouvel article</button></div>
     <div class="toolbar-pro"><input class="inp search" id="b-search" placeholder="Rechercher un article…" value="${esc(_bq)}"><div style="display:flex;gap:6px;flex-wrap:wrap">${tabs}</div></div>
-    <div class="card">${rows}</div>`;
+    ${rows}`;
   const s=$('#b-search'); if(s) s.oninput=()=>{ const p=s.selectionStart; _bq=s.value; viewBiblio(); const n=$('#b-search'); n.focus(); n.setSelectionRange(p,p); };
 }
 window.setBFilter=(f)=>{ _bfilter=f; viewBiblio(); };
