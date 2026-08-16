@@ -1072,6 +1072,7 @@ function buildDocHTML(kind,o){
   return `<div class="doc" id="doc-el">
     <div class="dhead">
       <div>
+        ${co.logo_url?`<img src="${esc(co.logo_url)}" crossorigin="anonymous" style="max-height:54px;max-width:200px;margin-bottom:10px;object-fit:contain">`:''}
         <div class="dtitle-co">${co.titulaire_compte?esc(co.titulaire_compte)+'. ':''}${esc(co.nom||'')}</div>
         <div class="dco">${co.adresse?esc(co.adresse)+'<br>':''}${co.telephone?esc(co.telephone)+'<br>':''}${co.email?esc(co.email)+'<br>':''}${co.rcs?esc(co.rcs):''}</div>
       </div>
@@ -1167,7 +1168,7 @@ function viewClients(){
       <div class="adr">${c.adresse?esc(c.adresse):'<span style="color:var(--faint)">Sans adresse</span>'}</div>
       ${c.telephone?`<div class="adr">☎ ${esc(c.telephone)}</div>`:''}
       <div class="meta"><span><b>${st.n}</b> devis</span><span><b>${eur(st.tot)}</b></span></div>
-      <div style="margin-top:12px"><button class="btn ghost sm" onclick="editClient('${c.id}')">Modifier</button></div>
+      <div style="margin-top:12px;display:flex;gap:8px"><button class="btn ghost sm" onclick="editClient('${c.id}')">Modifier</button><button class="btn ghost sm" onclick="delClient('${c.id}')">Suppr.</button></div>
     </div>`;
   }).join(''):`<div class="empty" style="grid-column:1/-1"><b>${window._clq?'Aucun résultat':'Aucun client'}</b>${window._clq?'Essayez un autre nom ou adresse.':'Ajoutés automatiquement dès votre premier devis.'}</div>`;
   $('#view').innerHTML=`
@@ -1177,6 +1178,15 @@ function viewClients(){
   const s=$('#cl-search');
   s.oninput=()=>{ const p=s.selectionStart; window._clq=s.value; viewClients(); const n=$('#cl-search'); n.focus(); n.setSelectionRange(p,p); };
 }
+window.delClient=async(id)=>{
+  const c=S.clients.find(x=>x.id===id);
+  const nbD=S.devis.filter(d=>d.client_id===id).length;
+  const nbF=S.factures.filter(f=>f.client_id===id).length;
+  if(nbD||nbF){ alert(`Impossible de supprimer « ${c?c.nom:''} » : il a encore ${nbD} devis et ${nbF} facture(s).\nSupprimez ou réattribuez-les d'abord.`); return; }
+  if(!confirm(`Supprimer le client ${c?c.nom:''} ?`)) return;
+  try{ await db('clients',{method:'DELETE',query:`?id=eq.${id}`}); S.clients=S.clients.filter(x=>x.id!==id); viewClients(); }
+  catch(e){ alert(e.message); }
+};
 window.editClient=(id)=>{
   const c=id?S.clients.find(x=>x.id===id):{};
   $('#view').innerHTML=`
@@ -1410,6 +1420,9 @@ function viewSettings(){
     <div id="s-msg"></div>
     <div class="panel">
       <p style="color:var(--muted);font-size:13px;margin:0 0 18px">Ces informations apparaissent en haut de vos devis et factures.</p>
+      <label class="fld"><span>Logo (apparaît sur les devis/factures)</span>
+        ${c.logo_url?`<img src="${esc(c.logo_url)}" style="max-height:54px;margin-bottom:8px;display:block;background:#fff;padding:5px;border-radius:8px">`:''}
+        <input class="inp" id="s-logo" type="file" accept="image/*"></label>
       <div class="grid2">
         <label class="fld"><span>Nom de l'entreprise</span><input class="inp" id="s-nom" value="${esc(c.nom||'')}"></label>
         <label class="fld"><span>SIRET</span><input class="inp" id="s-siret" value="${esc(c.siret||'')}"></label>
@@ -1445,6 +1458,8 @@ function viewSettings(){
       rcs:$('#s-rcs').value.trim()||null,titulaire_compte:$('#s-titul').value.trim()||null,
       iban:$('#s-iban').value.trim()||null,bic:$('#s-bic').value.trim()||null,
       modes_paiement:$('#s-modes').value.trim()||null,assurance:$('#s-assur').value.trim()||null};
+    const lf=$('#s-logo')&&$('#s-logo').files&&$('#s-logo').files[0];
+    if(lf){ try{ btn.textContent='Envoi du logo…'; body.logo_url=await uploadFile(lf); }catch(e){ $('#s-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Enregistrer'; return; } }
     try{
       const r=await db('companies',{method:'PATCH',query:`?id=eq.${c.id}`,prefer:'return=representation',body});
       S.company=r[0]; $('#w-co').textContent=S.company.nom;
