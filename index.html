@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{
   --bg:#0A0E1C;
@@ -200,6 +201,10 @@ textarea.inp{resize:vertical;min-height:64px}
 .chart .bar .b{width:72%;max-width:46px;border-radius:9px 9px 0 0;background:linear-gradient(180deg,var(--accent-soft),var(--accent));min-height:3px;box-shadow:0 10px 22px -10px rgba(255,106,43,.6);transition:height .4s ease}
 .chart .bar .lab{font-size:11px;color:var(--faint);text-transform:capitalize}
 .chart .bar .val{font-size:10.5px;color:var(--muted);font-family:'Space Grotesk';font-weight:600;white-space:nowrap}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.photo-cell{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.photo-cell img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-del{position:absolute;top:5px;right:5px;background:rgba(0,0,0,.62);border:none;color:#fff;border-radius:8px;width:26px;height:26px;cursor:pointer;font-size:12px}
 .leaflet-container{font-family:'Inter',sans-serif}
 
 /* ---------- agenda / calendar ---------- */
@@ -454,6 +459,7 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
     <div class="nav">
       <button data-view="accueil" class="on">Accueil</button>
       <button data-view="dash">Devis</button>
+      <button data-view="chantiers">Chantiers</button>
       <button data-view="agenda">Agenda</button>
       <button data-view="factures">Factures</button>
       <button data-view="compta">Comptabilité</button>
@@ -497,7 +503,7 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
 const SUPABASE_URL = 'https://llakesuqcugmdniaqdjr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_SCBPyFQ7ktB9Znho8MM6kg_w-cphtSI';
 
-const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], mode:'signup' };
+const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], photos:[], heures:[], mode:'signup' };
 const TYPEL={ouvrage:'Ouvrage',materiel:'Matériel',fourniture:'Fourniture'};
 const $ = s=>document.querySelector(s);
 const eur = n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(+n||0);
@@ -666,6 +672,7 @@ function go(v){
   document.querySelectorAll('.nav button, .bottomnav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
   if(v==='accueil') viewAccueil();
   if(v==='dash') viewDash();
+  if(v==='chantiers') viewChantiers();
   if(v==='agenda') viewAgenda();
   if(v==='compta') viewCompta();
   if(v==='factures') viewFactures();
@@ -684,6 +691,8 @@ async function loadData(){
   S.depenses = await db('depenses',{query:`?select=*&company_id=eq.${S.company.id}&order=date_depense.desc`});
   S.events = await db('events',{query:`?select=*&company_id=eq.${S.company.id}&order=date_event`});
   S.biblio = await db('bibliotheque',{query:`?select=*&company_id=eq.${S.company.id}&order=designation`});
+  try{ S.photos = await db('chantier_photos',{query:`?select=*&company_id=eq.${S.company.id}&order=created_at.desc`}); }catch(e){ S.photos=[]; }
+  try{ S.heures = await db('heures',{query:`?select=*&company_id=eq.${S.company.id}&order=date_h.desc`}); }catch(e){ S.heures=[]; }
 }
 
 /* ---- DASHBOARD ---- */
@@ -886,7 +895,8 @@ const IC={
   clients:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><path d="M16 5a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>`,
   map:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>`,
   co:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M8 8V5a2 2 0 012-2h4a2 2 0 012 2v3"/></svg>`,
-  biblio:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2z"/><path d="M8 3v18"/></svg>`
+  biblio:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2z"/><path d="M8 3v18"/></svg>`,
+  chantier:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M6 21V9l6-4 6 4v12"/><path d="M9 21v-6h6v6"/></svg>`
 };
 function viewAccueil(){
   $('#view').innerHTML=`
@@ -898,6 +908,7 @@ function viewAccueil(){
     </div>
     <div class="section-label">Accès rapide</div>
     <div class="tiles">
+      <div class="tile" onclick="go('chantiers')"><div class="ic">${IC.chantier}</div><div class="tt">Chantiers</div><div class="ts">Matériaux, heures, marge</div></div>
       <div class="tile" onclick="go('compta')"><div class="ic">${IC.compta}</div><div class="tt">Comptabilité</div><div class="ts">Recettes, impayés, cotisations</div></div>
       <div class="tile" onclick="go('factures')"><div class="ic">${IC.fac}</div><div class="tt">Factures</div><div class="ts">Suivi des paiements</div></div>
       <div class="tile" onclick="go('clients')"><div class="ic">${IC.clients}</div><div class="tt">Clients</div><div class="ts">Fiches & recherche</div></div>
@@ -984,46 +995,95 @@ window.delDepenseC=async(id)=>{
   catch(e){ alert(e.message); }
 };
 
+function chantierNums(d){
+  const mat=S.depenses.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.montant||0),0);
+  const mo=S.heures.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const total=+d.total||0; return {mat,mo,total,marge:total-mat-mo};
+}
+function viewChantiers(){
+  const list=S.devis;
+  const cards=list.length?list.map(d=>{
+    const n=chantierNums(d); const av=+d.avancement||0; const ph=S.photos.filter(p=>p.devis_id===d.id).length;
+    const h=clientHue(d.numero||'');
+    return `<div class="cl-card2" style="cursor:pointer" onclick="openDepenses('${d.id}')">
+      <div class="cl-top">
+        <div class="cl-ava" style="background:linear-gradient(135deg,hsl(${h},60%,55%),hsl(${(h+40)%360},58%,44%))">${esc((d.numero||'--').slice(-2))}</div>
+        <div style="flex:1;min-width:0"><div class="cl-name">${esc(d.clients?.nom||'—')}</div><span class="muted" style="font-size:12px">${esc(d.numero)}</span></div>
+        <span class="cl-badge ${n.marge>=0?'ok':'bad'}">${eur(n.marge)}</span>
+      </div>
+      <div style="margin:8px 0 12px"><div style="height:8px;background:var(--bg-2);border-radius:20px;overflow:hidden"><div style="height:100%;width:${av}%;background:linear-gradient(90deg,var(--accent-soft),var(--accent))"></div></div><div style="font-size:11px;color:var(--faint);margin-top:4px">Avancement ${av}% · 📷 ${ph}</div></div>
+      <div class="cl-stats"><div><b>${eur(n.total)}</b><span>Devis</span></div><div><b>${eur(n.mat)}</b><span>Matériaux</span></div><div><b>${eur(n.mo)}</b><span>Main d'œuvre</span></div></div>
+    </div>`;
+  }).join(''):`<div class="empty" style="grid-column:1/-1"><b>Aucun chantier</b>Créez un devis pour démarrer un chantier.</div>`;
+  $('#view').innerHTML=`<div class="sec-head"><h2>Chantiers</h2><button class="btn" onclick="newDevis()">+ Nouveau</button></div><div class="clients-grid">${cards}</div>`;
+}
+
 /* ---- DÉPENSES / CHANTIER ---- */
 let _depDevis=null;
 window.openDepenses=(devisId)=>{ _depDevis=devisId; viewDepenses(); window.scrollTo(0,0); };
 function viewDepenses(){
-  const d=S.devis.find(x=>x.id===_depDevis); if(!d){ go('dash'); return; }
+  const d=S.devis.find(x=>x.id===_depDevis); if(!d){ go('chantiers'); return; }
   const deps=S.depenses.filter(x=>x.devis_id===_depDevis);
-  const tot=deps.reduce((s,x)=>s+(+x.montant||0),0);
-  const marge=(+d.total||0)-tot;
-  const rows=deps.length?deps.map(x=>`
-    <div class="row" style="grid-template-columns:1.6fr auto auto">
-      <div class="n" style="font-family:inherit;font-weight:500">${esc(x.libelle)}${x.justificatif_url?` <a href="${esc(x.justificatif_url)}" target="_blank" style="color:var(--accent-soft);font-size:12px;margin-left:6px;white-space:nowrap">🧾 reçu</a>`:''}</div>
-      <div class="d" style="color:var(--faint)">${fdate(x.date_depense)}</div>
-      <div class="t">${eur(x.montant)}
-        <button class="btn ghost sm" style="margin-left:10px" onclick="delDepense('${x.id}')">✕</button>
-      </div>
-    </div>`).join(''):`<div class="empty"><b>Aucun matériau saisi</b>Ajoutez ce que vous achetez pour ce chantier.</div>`;
+  const hrs=S.heures.filter(x=>x.devis_id===_depDevis);
+  const phs=S.photos.filter(x=>x.devis_id===_depDevis);
+  const mat=deps.reduce((s,x)=>s+(+x.montant||0),0);
+  const mo=hrs.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const totalH=hrs.reduce((s,x)=>s+(+x.heures||0),0);
+  const total=+d.total||0; const marge=total-mat-mo; const av=+d.avancement||0;
+  const matRows=deps.length?deps.map(x=>`<div class="row" style="grid-template-columns:1.6fr auto auto"><div class="n" style="font-family:inherit;font-weight:500">${esc(x.libelle)}${x.justificatif_url?` <a href="${esc(x.justificatif_url)}" target="_blank" style="color:var(--accent-soft);font-size:12px;margin-left:6px">🧾</a>`:''}</div><div class="d" style="color:var(--faint)">${fdate(x.date_depense)}</div><div class="t">${eur(x.montant)}<button class="btn ghost sm" style="margin-left:10px" onclick="delDepense('${x.id}')">✕</button></div></div>`).join(''):`<div class="empty" style="padding:20px"><b>Aucun matériau</b></div>`;
+  const hrRows=hrs.length?hrs.map(x=>`<div class="row" style="grid-template-columns:1.6fr auto auto"><div class="n" style="font-family:inherit;font-weight:500">${esc(x.description||'Main d'+"'"+'œuvre')}<div style="color:var(--faint);font-size:12px">${(+x.heures||0)} h × ${eur(x.taux_horaire)} · ${fdate(x.date_h)}</div></div><div class="t">${eur((+x.heures||0)*(+x.taux_horaire||0))}<button class="btn ghost sm" style="margin-left:10px" onclick="delHeure('${x.id}')">✕</button></div><div></div></div>`).join(''):`<div class="empty" style="padding:20px"><b>Aucune heure saisie</b></div>`;
+  const gallery=phs.length?`<div class="photo-grid">${phs.map(p=>`<div class="photo-cell"><a href="${esc(p.url)}" target="_blank"><img src="${esc(p.url)}"></a><button class="photo-del" onclick="delPhoto('${p.id}')">✕</button></div>`).join('')}</div>`:`<div class="empty" style="padding:20px"><b>Aucune photo</b>Ajoutez des photos avant/après.</div>`;
   $('#view').innerHTML=`
-    <div class="sec-head"><h2>Chantier — ${esc(d.numero)}</h2><button class="btn ghost" onclick="go('dash')">← Retour</button></div>
-    <p style="color:var(--muted);font-size:13px;margin:-6px 0 16px">Client : ${esc(d.clients?.nom||'—')} · Devis : ${eur(d.total)}</p>
+    <div class="sec-head"><h2>Chantier — ${esc(d.numero)}</h2><button class="btn ghost" onclick="go('chantiers')">← Retour</button></div>
+    <p style="color:var(--muted);font-size:13px;margin:-6px 0 16px">Client : ${esc(d.clients?.nom||'—')}</p>
     <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-      <div class="stat"><div class="k">Montant du devis</div><div class="v num">${eur(d.total)}</div></div>
-      <div class="stat"><div class="k">Matériaux / dépenses</div><div class="v num">${eur(tot)}</div><div class="sub">${deps.length} ligne${deps.length>1?'s':''}</div></div>
-      <div class="stat"><div class="k">Marge estimée</div><div class="v num ${marge>=0?'accent':''}" ${marge<0?'style="color:var(--bad)"':''}>${eur(marge)}</div><div class="sub">devis − dépenses</div></div>
+      <div class="stat"><div class="k">Devis</div><div class="v num">${eur(total)}</div></div>
+      <div class="stat"><div class="k">Matériaux</div><div class="v num">${eur(mat)}</div></div>
+      <div class="stat"><div class="k">Main d'œuvre</div><div class="v num">${eur(mo)}</div><div class="sub">${totalH} h</div></div>
+      <div class="stat"><div class="k">Marge nette</div><div class="v num" style="color:${marge>=0?'var(--ok)':'var(--bad)'}">${eur(marge)}</div><div class="sub">devis − matériaux − MO</div></div>
     </div>
+    <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Avancement du chantier</b><span class="muted" id="av-val">${av}%</span></div>
+      <input type="range" min="0" max="100" step="5" value="${av}" style="width:100%" oninput="document.getElementById('av-val').textContent=this.value+'%'" onchange="setAvancement('${d.id}',this.value)">
+      <div style="height:8px;background:var(--bg-2);border-radius:20px;overflow:hidden;margin-top:8px"><div style="height:100%;width:${av}%;background:linear-gradient(90deg,var(--accent-soft),var(--accent))"></div></div></div>
     <div id="dp-msg"></div>
     <div class="panel">
-      <h3>Ajouter un matériau / une dépense</h3>
-      <div class="grid2">
-        <label class="fld"><span>Libellé</span><input class="inp" id="dp-lib" placeholder="Ex : Peinture Tollens 15L"></label>
-        <label class="fld"><span>Montant</span><input class="inp" id="dp-m" type="number" step="0.01" placeholder="0"></label>
-      </div>
-      <div class="grid2">
-        <label class="fld"><span>Date</span><input class="inp" id="dp-date" type="date" value="${today()}"></label>
-        <label class="fld"><span>Photo du reçu / ticket (optionnel)</span><input class="inp" id="dp-file" type="file" accept="image/*" capture="environment"></label>
-      </div>
+      <h3>Matériaux / dépenses</h3>
+      <div class="grid2"><label class="fld"><span>Libellé</span><input class="inp" id="dp-lib" placeholder="Ex : Peinture 15L"></label><label class="fld"><span>Montant</span><input class="inp" id="dp-m" type="number" step="0.01" placeholder="0"></label></div>
+      <div class="grid2"><label class="fld"><span>Date</span><input class="inp" id="dp-date" type="date" value="${today()}"></label><label class="fld"><span>Photo du reçu (optionnel)</span><input class="inp" id="dp-file" type="file" accept="image/*" capture="environment"></label></div>
       <div class="editor-actions"><button class="btn" id="dp-add" onclick="addDepense()">Ajouter</button></div>
+      <div class="card" style="margin-top:12px">${matRows}</div>
     </div>
-    <div class="sec-head"><h2>Matériaux du chantier</h2></div>
-    <div class="card">${rows}</div>`;
+    <div class="panel">
+      <h3>Main d'œuvre (heures)</h3>
+      <div class="grid2"><label class="fld"><span>Description</span><input class="inp" id="hr-desc" placeholder="Ex : pose carrelage"></label><label class="fld"><span>Date</span><input class="inp" id="hr-date" type="date" value="${today()}"></label></div>
+      <div class="grid2"><label class="fld"><span>Heures</span><input class="inp" id="hr-h" type="number" step="0.5" placeholder="0"></label><label class="fld"><span>Taux horaire (€)</span><input class="inp" id="hr-t" type="number" step="0.5" placeholder="Ex : 35" value="${S.company.taux_horaire||''}"></label></div>
+      <div class="editor-actions"><button class="btn" id="hr-add" onclick="addHeure()">Ajouter</button></div>
+      <div class="card" style="margin-top:12px">${hrRows}</div>
+    </div>
+    <div class="panel">
+      <h3>Photos du chantier</h3>
+      <input class="inp" id="ph-file" type="file" accept="image/*" capture="environment" multiple>
+      <div class="editor-actions"><button class="btn" id="ph-add" onclick="addPhoto()">Ajouter</button></div>
+      <div style="margin-top:12px">${gallery}</div>
+    </div>`;
 }
+window.setAvancement=async(id,val)=>{ try{ await db('devis',{method:'PATCH',query:`?id=eq.${id}`,body:{avancement:+val}}); const d=S.devis.find(x=>x.id===id); if(d)d.avancement=+val; }catch(e){} };
+window.addHeure=async()=>{
+  const desc=$('#hr-desc').value.trim(), dt=$('#hr-date').value||today(), h=parseFloat($('#hr-h').value)||0, t=parseFloat($('#hr-t').value)||0;
+  if(!h){ $('#dp-msg').innerHTML='<div class="msg err">Indiquez les heures.</div>'; return; }
+  const btn=$('#hr-add'); btn.disabled=true; btn.textContent='…';
+  try{ const r=await db('heures',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:_depDevis,description:desc||null,date_h:dt,heures:h,taux_horaire:t}}); S.heures.unshift(r[0]); viewDepenses(); }
+  catch(e){ $('#dp-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter'; }
+};
+window.delHeure=async(id)=>{ try{ await db('heures',{method:'DELETE',query:`?id=eq.${id}`}); S.heures=S.heures.filter(x=>x.id!==id); viewDepenses(); }catch(e){} };
+window.addPhoto=async()=>{
+  const el=$('#ph-file'); const files=el&&el.files?Array.from(el.files):[];
+  if(!files.length){ $('#dp-msg').innerHTML='<div class="msg err">Choisissez une photo.</div>'; return; }
+  const btn=$('#ph-add'); btn.disabled=true; btn.textContent='Envoi…';
+  try{ for(const f of files){ const url=await uploadFile(f); const r=await db('chantier_photos',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:_depDevis,url}}); S.photos.unshift(r[0]); } viewDepenses(); }
+  catch(e){ $('#dp-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter'; }
+};
+window.delPhoto=async(id)=>{ if(!confirm('Supprimer cette photo ?'))return; try{ await db('chantier_photos',{method:'DELETE',query:`?id=eq.${id}`}); S.photos=S.photos.filter(x=>x.id!==id); viewDepenses(); }catch(e){} };
 window.addDepense=async()=>{
   const lib=$('#dp-lib').value.trim(), m=parseFloat($('#dp-m').value)||0, dt=$('#dp-date').value||today();
   if(!lib||!m){ $('#dp-msg').innerHTML='<div class="msg err">Indiquez un libellé et un montant.</div>'; return; }
@@ -1605,15 +1665,29 @@ async function copyProIdx(i){ const t=(window._relances||[])[i]||''; try{await n
 function proAsk(){const q=($('#pro-q')?.value||'').toLowerCase().trim();if(!q)return;const chat=$('#pro-chat');let a='Je peux analyser :';if(q.includes('impay')){const n=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);a=`Tu as ${S.factures.filter(f=>f.statut!=='payee').length} facture(s) impayée(s), pour ${eur(n)}.`}else if(q.includes('chiffre')||q.includes('ca')){a=`CA encaissé : ${eur(S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0))}.`}else if(q.includes('dépense')||q.includes('depense')){a=`Dépenses enregistrées : ${eur(S.depenses.reduce((s,d)=>s+(+d.montant||0),0))}.`}else if(q.includes('marge')){a=`Marge brute estimée : ${eur(S.devis.reduce((s,d)=>s+(+d.total||0),0)-S.depenses.reduce((s,d)=>s+(+d.montant||0),0))}.`}else{a=`Je vois ${S.clients.length} client(s), ${S.devis.length} devis, ${S.factures.length} facture(s) et ${S.depenses.length} dépense(s). Essaie « impayés », « CA », « dépenses » ou « marge ».`}chat.innerHTML+=`<div class="pro-bubble me">${esc(q)}</div><div class="pro-bubble bot">${esc(a)}</div>`;chat.scrollTop=chat.scrollHeight}
 
 /* ---- SIGNATURE EN LIGNE (lien client) ---- */
+function genToken(){ return ((crypto&&crypto.randomUUID)?crypto.randomUUID():(Math.random().toString(36).slice(2)+Date.now().toString(36))).replace(/-/g,''); }
+async function ensureShareToken(d){
+  if(d.share_token) return d.share_token;
+  const tok=genToken();
+  await db('devis',{method:'PATCH',query:`?id=eq.${d.id}`,body:{share_token:tok}});
+  d.share_token=tok; return tok;
+}
+function publicUrl(tok){ return `${location.origin}${location.pathname}?d=${tok}`; }
+function qrDataURL(text,size){
+  return new Promise(res=>{
+    if(typeof QRCode==='undefined'){ res(''); return; }
+    try{
+      const holder=document.createElement('div');
+      new QRCode(holder,{text,width:size,height:size,correctLevel:QRCode.CorrectLevel.M});
+      setTimeout(()=>{ const cv=holder.querySelector('canvas'); const img=holder.querySelector('img');
+        try{ res(cv?cv.toDataURL('image/png'):(img&&img.src?img.src:'')); }catch(e){ res(img&&img.src?img.src:''); } },40);
+    }catch(e){ res(''); }
+  });
+}
 window.shareDevisLink=async(id)=>{
   const d=S.devis.find(x=>x.id===id); if(!d)return;
-  let tok=d.share_token;
-  if(!tok){
-    tok=((crypto&&crypto.randomUUID)?crypto.randomUUID():(Math.random().toString(36).slice(2)+Date.now().toString(36))).replace(/-/g,'');
-    try{ await db('devis',{method:'PATCH',query:`?id=eq.${id}`,body:{share_token:tok}}); d.share_token=tok; }
-    catch(e){ alert(e.message); return; }
-  }
-  const url=`${location.origin}${location.pathname}?d=${tok}`;
+  let tok; try{ tok=await ensureShareToken(d); }catch(e){ alert(e.message); return; }
+  const url=publicUrl(tok);
   try{ if(navigator.share){ await navigator.share({title:`Devis ${d.numero}`,text:`Votre devis ${d.numero} — à consulter et signer en ligne`,url}); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
   try{ await navigator.clipboard.writeText(url); alert('Lien de signature copié :\n\n'+url); }catch(e){ prompt('Lien du devis à signer :',url); }
 };
