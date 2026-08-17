@@ -463,6 +463,7 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
       <button data-view="agenda">Agenda</button>
       <button data-view="factures">Factures</button>
       <button data-view="compta">Comptabilité</button>
+      <button data-view="tresorerie">Trésorerie</button>
       <button data-view="clients">Clients</button>
       <button data-view="biblio">Bibliothèque</button>
       <button data-view="carte">Carte</button>
@@ -501,6 +502,7 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
 
 <script>
 const SUPABASE_URL = 'https://llakesuqcugmdniaqdjr.supabase.co';
+const AI_FN = 'https://llakesuqcugmdniaqdjr.supabase.co/functions/v1/ai-devis';
 const SUPABASE_KEY = 'sb_publishable_SCBPyFQ7ktB9Znho8MM6kg_w-cphtSI';
 
 const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], photos:[], heures:[], mode:'signup' };
@@ -675,6 +677,7 @@ function go(v){
   if(v==='chantiers') viewChantiers();
   if(v==='agenda') viewAgenda();
   if(v==='compta') viewCompta();
+  if(v==='tresorerie') viewTresorerie();
   if(v==='factures') viewFactures();
   if(v==='clients') viewClients();
   if(v==='biblio') viewBiblio();
@@ -911,7 +914,8 @@ const IC={
   map:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>`,
   co:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M8 8V5a2 2 0 012-2h4a2 2 0 012 2v3"/></svg>`,
   biblio:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2z"/><path d="M8 3v18"/></svg>`,
-  chantier:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M6 21V9l6-4 6 4v12"/><path d="M9 21v-6h6v6"/></svg>`
+  chantier:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M6 21V9l6-4 6 4v12"/><path d="M9 21v-6h6v6"/></svg>`,
+  tresor:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h3"/></svg>`
 };
 function viewAccueil(){
   $('#view').innerHTML=`
@@ -925,6 +929,7 @@ function viewAccueil(){
     <div class="tiles">
       <div class="tile" onclick="go('chantiers')"><div class="ic">${IC.chantier}</div><div class="tt">Chantiers</div><div class="ts">Matériaux, heures, marge</div></div>
       <div class="tile" onclick="go('compta')"><div class="ic">${IC.compta}</div><div class="tt">Comptabilité</div><div class="ts">Recettes, impayés, cotisations</div></div>
+      <div class="tile" onclick="go('tresorerie')"><div class="ic">${IC.tresor}</div><div class="tt">Trésorerie</div><div class="ts">Ce qui doit rentrer</div></div>
       <div class="tile" onclick="go('factures')"><div class="ic">${IC.fac}</div><div class="tt">Factures</div><div class="ts">Suivi des paiements</div></div>
       <div class="tile" onclick="go('clients')"><div class="ic">${IC.clients}</div><div class="tt">Clients</div><div class="ts">Fiches & recherche</div></div>
       <div class="tile" onclick="go('biblio')"><div class="ic">${IC.biblio}</div><div class="tt">Bibliothèque</div><div class="ts">Vos prix réutilisables</div></div>
@@ -1582,6 +1587,36 @@ window.insertBiblioLine=(id)=>{
   closeBpick(); renderLignes();
 };
 
+/* ---- TRÉSORERIE ---- */
+function viewTresorerie(){
+  const paid=S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0);
+  const unpaidList=S.factures.filter(f=>f.statut!=='payee');
+  const unpaid=unpaidList.reduce((s,f)=>s+(+f.total||0),0);
+  const invoiced=new Set(S.factures.map(f=>f.devis_id));
+  const toInvoiceList=S.devis.filter(d=>d.statut==='accepte'&&!invoiced.has(d.id));
+  const toInvoice=toInvoiceList.reduce((s,d)=>s+(+d.total||0),0);
+  const taux=(S.company.taux_cotisation!=null?+S.company.taux_cotisation:21.2);
+  const cotis=paid*taux/100;
+  const entrees=unpaid+toInvoice;
+  const position=entrees-cotis;
+  const entRows=[
+    ...unpaidList.map(f=>({n:f.numero,c:(f.clients&&f.clients.nom)||'',t:+f.total||0,k:'Facture impayée'})),
+    ...toInvoiceList.map(d=>({n:d.numero,c:(d.clients&&d.clients.nom)||'',t:+d.total||0,k:'Devis accepté (à facturer)'}))
+  ].sort((a,b)=>b.t-a.t);
+  const list=entRows.length?entRows.map(r=>`<div class="row" style="grid-template-columns:1.6fr auto"><div class="n" style="font-family:inherit;font-weight:500">${esc(r.n)}<div style="color:var(--faint);font-size:12px">${esc(r.c)} · ${esc(r.k)}</div></div><div class="t">${eur(r.t)}</div></div>`).join(''):`<div class="empty"><b>Aucune entrée attendue</b>Les factures impayées et devis acceptés apparaîtront ici.</div>`;
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Trésorerie</h2><span class="muted">prévision</span></div>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <div class="stat"><div class="k">À encaisser (impayés)</div><div class="v num">${eur(unpaid)}</div><div class="sub">${unpaidList.length} facture(s)</div></div>
+      <div class="stat"><div class="k">À facturer (devis acceptés)</div><div class="v num">${eur(toInvoice)}</div><div class="sub">${toInvoiceList.length} devis</div></div>
+      <div class="stat"><div class="k">Cotisations à prévoir</div><div class="v num">${eur(cotis)}</div><div class="sub">≈ ${taux}% du encaissé</div></div>
+      <div class="stat"><div class="k">Position prévisionnelle</div><div class="v num" style="color:${position>=0?'var(--ok)':'var(--bad)'}">${eur(position)}</div><div class="sub">entrées − cotisations</div></div>
+    </div>
+    <div class="panel"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><div><div style="color:var(--muted);font-size:13px">Total des entrées attendues</div><div class="num" style="font-family:'Space Grotesk';font-size:26px;font-weight:700;color:var(--accent-soft);margin-top:4px">${eur(entrees)}</div></div><div style="color:var(--faint);font-size:12px;max-width:42ch">Argent qui devrait rentrer : factures non encore payées + devis acceptés pas encore facturés. Estimation indicative.</div></div></div>
+    <div class="sec-head"><h2>Entrées attendues</h2></div>
+    <div class="card">${list}</div>`;
+}
+
 /* ---- SETTINGS ---- */
 function viewSettings(){
   const c=S.company;
@@ -1655,7 +1690,7 @@ function renderProTab(tab){
   const ca=S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0), unpaid=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0), dep=S.depenses.reduce((s,d)=>s+(+d.montant||0),0), accepted=S.devis.filter(d=>d.statut==='accepte').reduce((s,d)=>s+(+d.total||0),0);
   el.innerHTML=`<div class="pro-grid"><div class="pro-box"><span class="muted">CA encaissé</span><div class="pro-kpi">${eur(ca)}</div><span class="pro-tag">LIVE</span></div><div class="pro-box"><span class="muted">À encaisser</span><div class="pro-kpi">${eur(unpaid)}</div></div><div class="pro-box"><span class="muted">Devis acceptés</span><div class="pro-kpi">${eur(accepted)}</div></div></div><div class="pro-two" style="margin-top:14px"><div class="pro-box"><h3>🚧 Chantiers à surveiller</h3><p>Classement par dépenses enregistrées.</p><div class="pro-list">${S.devis.map(d=>{const x=S.depenses.filter(z=>z.devis_id===d.id).reduce((s,z)=>s+(+z.montant||0),0);const m=(+d.total||0)-x;return `<div class="pro-item"><span><b>${esc(d.numero)}</b><br><small class="muted">${esc(d.clients?.nom||'Sans client')}</small></span><b>${eur(m)}</b></div>`}).slice(0,7).join('')||'<p>Aucun chantier.</p>'}</div></div><div class="pro-box"><h3>🔎 Analyse rapide</h3><p>Interroge tes chiffres (impayés, CA, dépenses, marge).</p><div id="pro-chat" class="pro-chat"><div class="pro-bubble bot">Bonjour. Je peux calculer tes chiffres : devis, factures, dépenses et marges. Essaie : « Quels sont mes impayés ? »</div></div><div class="pro-input"><input class="inp" id="pro-q" placeholder="Ex : montre mes impayés"><button class="btn" onclick="proAsk()">Analyser</button></div></div></div>`;
  } else if(tab==='aidevis'){
-  el.innerHTML=`<div class="pro-two"><div class="pro-box"><h3>📋 Modèles de devis</h3><p>Choisis un modèle de chantier : Batix insère des lignes pré-remplies (prix indicatifs, à ajuster). L'assistant IA qui rédige à partir de ton texte arrivera avec ta clé.</p><textarea class="inp" id="ai-desc" style="min-height:150px" placeholder="Ex : rénovation salle de bain 8 m², dépose baignoire, douche, carrelage murs et sol, peinture plafond"></textarea><div class="pro-actions"><button class="btn" onclick="generateAIQuote()">Proposer un modèle</button><button class="btn ghost" onclick="useTemplate('salle_de_bain')">Salle de bain</button><button class="btn ghost" onclick="useTemplate('peinture')">Peinture</button><button class="btn ghost" onclick="useTemplate('placo')">Placo</button></div></div><div class="pro-box"><h3>📋 Aperçu</h3><div id="ai-preview"><p>Aucune ligne générée.</p></div></div></div>`;
+  el.innerHTML=`<div class="pro-two"><div class="pro-box"><h3>🤖 Assistant devis IA</h3><p>Décris les travaux en langage naturel — l'IA rédige les lignes du devis en utilisant tes prix de la bibliothèque.</p><textarea class="inp" id="ai-desc" style="min-height:150px" placeholder="Ex : rénovation salle de bain 8 m², dépose baignoire, pose douche à l'italienne, carrelage murs et sol, peinture plafond"></textarea><div class="pro-actions"><button class="btn" onclick="generateAIDevis()">✨ Générer avec l'IA</button><button class="btn ghost" onclick="useTemplate('salle_de_bain')">Modèle SDB</button><button class="btn ghost" onclick="useTemplate('peinture')">Peinture</button><button class="btn ghost" onclick="useTemplate('placo')">Placo</button></div></div><div class="pro-box"><h3>📋 Aperçu</h3><div id="ai-preview"><p style="color:var(--muted)">Aucune ligne générée.</p></div></div></div>`;
  } else if(tab==='marge'){
   el.innerHTML=`<div class="pro-box"><h3>💰 Marge réelle par chantier</h3><p>Calcul : montant du devis − dépenses enregistrées. La marge affichée est une marge brute de chantier.</p><div class="pro-list">${S.devis.map(d=>{const dep=S.depenses.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.montant||0),0), total=+d.total||0, m=total-dep, pct=total?m/total*100:0;return `<div class="pro-item"><span><b>${esc(d.numero)}</b> — ${esc(d.clients?.nom||'')}</span><span><b>${eur(m)}</b> <small class="muted">(${pct.toFixed(1)}%)</small></span></div>`}).join('')||'<p>Aucun devis.</p>'}</div></div>`;
  } else if(tab==='crm'){
@@ -1668,6 +1703,23 @@ function renderProTab(tab){
 }
 function useTemplate(key){const rows=PRO_TEMPLATES[key]||[];const lines=rows.map((r,i)=>({categorie:r[0],description:'',quantite:r[1],unite:r[2],prix_unitaire:r[3],montant:r[1]*r[3],ordre:i}));const prev=lines.map(x=>`<div class="pro-item"><span>${esc(x.categorie)}<br><small class="muted">${x.quantite} ${esc(x.unite)} × ${eur(x.prix_unitaire)}</small></span><b>${eur(x.montant)}</b></div>`).join('');$('#ai-preview').innerHTML=prev+`<div class="pro-actions"><button class="btn" onclick='applyAILines(${JSON.stringify(lines)})'>Utiliser dans un devis</button></div>`}
 function generateAIQuote(){const t=($('#ai-desc')?.value||'').toLowerCase();let key=t.includes('salle de bain')||t.includes('douche')||t.includes('baignoire')?'salle_de_bain':t.includes('placo')||t.includes('isolation')?'placo':'peinture';useTemplate(key)}
+async function generateAIDevis(){
+  const t=($('#ai-desc')?.value||'').trim(); const prev=$('#ai-preview');
+  if(!t){ prev.innerHTML='<p style="color:var(--bad)">Décris d\'abord les travaux.</p>'; return; }
+  prev.innerHTML='<p style="color:var(--accent-soft)">✨ Génération en cours… (quelques secondes)</p>';
+  try{
+    const r=await fetch(AI_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.token||SUPABASE_KEY}`,'apikey':SUPABASE_KEY},body:JSON.stringify({
+      description:t, tva:(S.company&&S.company.tva_applicable?20:0),
+      bibliotheque:(S.biblio||[]).map(b=>({designation:b.designation,unite:b.unite,prix_unitaire:b.prix_unitaire}))
+    })});
+    const d=await r.json();
+    if(d.error){ prev.innerHTML=`<div class="msg err">${esc(d.error)}</div>`; return; }
+    const lines=(d.lignes||[]).map((x,i)=>{ const forfait=(x.unite==='forfait'||!x.quantite); const q=forfait?1:(+x.quantite||1); const pu=+x.prix_unitaire||0; return {categorie:x.categorie||'',description:x.description||'',quantite:forfait?'':q,unite:x.unite||'forfait',prix_unitaire:forfait?'':pu,montant:forfait?pu:Math.round(q*pu*100)/100,ordre:i}; });
+    if(!lines.length){ prev.innerHTML='<p style="color:var(--muted)">Aucune ligne générée — reformule la description.</p>'; return; }
+    const total=lines.reduce((s,x)=>s+(+x.montant||0),0);
+    prev.innerHTML=lines.map(x=>`<div class="pro-item"><span><b>${esc(x.categorie)}</b>${x.description?'<br><small class="muted">'+esc(x.description)+'</small>':''}</span><b>${eur(x.montant)}</b></div>`).join('')+`<div style="text-align:right;margin-top:10px;font-family:'Space Grotesk';font-weight:700;font-size:17px">Total : ${eur(total)}</div><div class="pro-actions"><button class="btn" onclick='applyAILines(${JSON.stringify(lines)})'>Utiliser dans un devis</button></div>`;
+  }catch(e){ prev.innerHTML=`<div class="msg err">Erreur : ${esc(String(e))}. Vérifie la fonction ai-devis et le secret ANTHROPIC_API_KEY.</div>`; }
+}
 function applyAILines(lines){
   const y=new Date().getFullYear();
   const seq=String(S.devis.length+1).padStart(3,'0');
