@@ -195,6 +195,11 @@ textarea.inp{resize:vertical;min-height:64px}
 .bib-price{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--accent-soft)}
 .bib-price small{color:var(--faint);font-weight:500;font-size:12px}
 .bib-actions{display:flex;gap:6px}
+.chart{display:flex;align-items:flex-end;gap:10px;height:210px;padding:12px 4px 0}
+.chart .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:8px}
+.chart .bar .b{width:72%;max-width:46px;border-radius:9px 9px 0 0;background:linear-gradient(180deg,var(--accent-soft),var(--accent));min-height:3px;box-shadow:0 10px 22px -10px rgba(255,106,43,.6);transition:height .4s ease}
+.chart .bar .lab{font-size:11px;color:var(--faint);text-transform:capitalize}
+.chart .bar .val{font-size:10.5px;color:var(--muted);font-family:'Space Grotesk';font-weight:600;white-space:nowrap}
 .leaflet-container{font-family:'Inter',sans-serif}
 
 /* ---------- agenda / calendar ---------- */
@@ -891,6 +896,12 @@ window.assistCreate=()=>{
 };
 
 /* ---- COMPTABILITÉ ---- */
+function monthlyEncaisse(){
+  const now=new Date(); const arr=[];
+  for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); arr.push({y:d.getFullYear(),m:d.getMonth(),label:d.toLocaleDateString('fr-FR',{month:'short'}),val:0}); }
+  S.factures.filter(f=>f.statut==='payee').forEach(f=>{ if(!f.date_facture)return; const d=new Date(f.date_facture+'T00:00:00'); const it=arr.find(a=>a.y===d.getFullYear()&&a.m===d.getMonth()); if(it) it.val+=(+f.total||0); });
+  return arr;
+}
 function viewCompta(){
   const paid=S.factures.filter(f=>f.statut==='payee');
   const recettes=paid.reduce((s,f)=>s+(+f.total||0),0);
@@ -899,6 +910,8 @@ function viewCompta(){
   const taux=(S.company.taux_cotisation!=null?+S.company.taux_cotisation:21.2);
   const cotis=recettes*taux/100;
   const net=recettes-cotis-depTot;
+  const mca=monthlyEncaisse(); const maxV=Math.max(1,...mca.map(x=>x.val));
+  const chartBars=mca.map(x=>`<div class="bar"><div class="val">${x.val?new Intl.NumberFormat('fr-FR').format(Math.round(x.val)):''}</div><div class="b" style="height:${x.val?Math.max(3,Math.round(x.val/maxV*100)):0}%"></div><div class="lab">${x.label}</div></div>`).join('');
   const lignes=paid.length?paid.map(f=>`
     <div class="row">
       <div class="n">${esc(f.numero)}</div>
