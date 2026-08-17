@@ -706,7 +706,7 @@ function viewDash(){
   const marge=paid-dep;
   const invoiced=new Set(S.factures.map(f=>f.devis_id));
   const pending=S.devis.filter(d=>d.statut==='brouillon').length;
-  const rows=S.devis.length?`<div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Statut</div><div class="t">Total</div></div>${S.devis.slice(0,12).map(d=>`<div class="row"><div class="n">${esc(d.numero)}</div><div class="c">${esc(d.clients?.nom||'—')}</div><div class="d" style="color:var(--faint)">${fdate(d.date_devis)}</div><div><span class="chip ${d.statut}">${({brouillon:'Brouillon',accepte:'Accepté',refuse:'Refusé'})[d.statut]||d.statut}</span></div><div class="t">${eur(d.total)}<div class="act" style="margin-top:8px"><button class="btn ghost sm" onclick="openDoc('${d.id}')">PDF</button><button class="btn ghost sm" onclick="openDepenses('${d.id}')">Chantier</button>${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepter</button>`:(invoiced.has(d.id)?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Facture</button>`)}<button class="btn ghost sm" onclick="duplicateDevis('${d.id}')">Dupliquer</button><button class="btn ghost sm" onclick="shareDevisLink('${d.id}')">Signer</button><button class="btn ghost sm" onclick="delDevis('${d.id}')">Suppr.</button></div></div></div>`).join('')}`:`<div class="empty"><b>Aucun devis pour l'instant</b>Créez votre premier devis pour démarrer.</div>`;
+  const rows=S.devis.length?`<div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Statut</div><div class="t">Total</div></div>${S.devis.slice(0,12).map(d=>`<div class="row"><div class="n">${esc(d.numero)}</div><div class="c">${esc(d.clients?.nom||'—')}</div><div class="d" style="color:var(--faint)">${fdate(d.date_devis)}</div><div><span class="chip ${d.statut}">${({brouillon:'Brouillon',accepte:'Accepté',refuse:'Refusé'})[d.statut]||d.statut}</span></div><div class="t">${eur(d.total)}<div class="act" style="margin-top:8px"><button class="btn ghost sm" onclick="openDoc('${d.id}')">PDF</button><button class="btn ghost sm" onclick="editDevis('${d.id}')">Éditer</button><button class="btn ghost sm" onclick="openDepenses('${d.id}')">Chantier</button>${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepter</button>`:(invoiced.has(d.id)?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Facture</button>`)}<button class="btn ghost sm" onclick="duplicateDevis('${d.id}')">Dupliquer</button><button class="btn ghost sm" onclick="shareDevisLink('${d.id}')">Signer</button><button class="btn ghost sm" onclick="delDevis('${d.id}')">Suppr.</button></div></div></div>`).join('')}`:`<div class="empty"><b>Aucun devis pour l'instant</b>Créez votre premier devis pour démarrer.</div>`;
   const upcoming=S.events.filter(e=>e.date_event>=today()).sort((a,b)=>a.date_event.localeCompare(b.date_event)).slice(0,4);
   $('#view').innerHTML=`
     <div class="sec-head"><div><h2 style="margin-bottom:3px">Tableau de bord</h2><span class="badge-live">Espace entreprise actif</span></div><button class="btn" onclick="newDevis()">+ Nouveau devis</button></div>
@@ -732,12 +732,20 @@ function viewDash(){
     <div style="font-size:11px;color:var(--faint);margin-top:10px">* Indicateur simplifié : encaissements moins dépenses enregistrées.</div>`;
   const q=$('#dv-search'); if(q) q.oninput=()=>{const v=q.value.toLowerCase();document.querySelectorAll('#dv-list .row').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(v)?'':'none')};
 }
+window.editDevis=(id)=>{
+  const d=S.devis.find(x=>x.id===id); if(!d)return;
+  ED={ id:d.id, numero:d.numero, date:d.date_devis, client_id:d.client_id||'', newClient:'', newAddr:'',
+    mat:d.materiel_fourni_par||'entreprise', notes:d.notes||'', descChantier:d.description_chantier||'',
+    acompte:d.acompte_pct||'', duree:d.duree_estimee||'', tva:d.tva_rate||0,
+    lignes:(d.devis_lignes||[]).slice().sort((a,b)=>a.ordre-b.ordre).map(l=>({categorie:l.categorie||'',description:l.description||'',quantite:l.quantite??'',unite:l.unite||'forfait',prix_unitaire:l.prix_unitaire??'',montant:l.montant??''})) };
+  if(!ED.lignes.length) ED.lignes=[{categorie:'',description:'',quantite:'',unite:'m²',prix_unitaire:'',montant:''}];
+  go('editor');
+};
 window.duplicateDevis=async(id)=>{
   const d=S.devis.find(x=>x.id===id); if(!d)return;
   ED={numero:`DEV-${new Date().getFullYear()}-${String(S.devis.length+1).padStart(3,'0')}`,date:today(),client_id:d.client_id||'',newClient:'',newAddr:'',mat:d.materiel_fourni_par||'entreprise',notes:d.notes||'',descChantier:d.description_chantier||'',acompte:d.acompte_pct||'',duree:d.duree_estimee||'',tva:d.tva_rate||0,lignes:(d.devis_lignes||[]).map(l=>({categorie:l.categorie||'',description:l.description||'',quantite:l.quantite??'',unite:l.unite||'forfait',prix_unitaire:l.prix_unitaire??'',montant:l.montant??''}))};
   go('editor');
 };
-
 window.setStatut = async (id,st)=>{
   await db('devis',{method:'PATCH',query:`?id=eq.${id}`,body:{statut:st}});
   const d=S.devis.find(x=>x.id===id); if(d)d.statut=st; viewDash();
@@ -765,7 +773,7 @@ window.newDevis = ()=>{
 function viewEditor(){
   const opts = S.clients.map(c=>`<option value="${c.id}" ${ED.client_id===c.id?'selected':''}>${esc(c.nom)}</option>`).join('');
   $('#view').innerHTML = `
-    <div class="sec-head"><h2>Nouveau devis</h2><button class="btn ghost" onclick="go('dash')">← Retour</button></div>
+    <div class="sec-head"><h2>${ED.id?'Modifier le devis':'Nouveau devis'}</h2><button class="btn ghost" onclick="go('dash')">← Retour</button></div>
     <div id="ed-msg"></div>
     <div class="panel">
       <div class="grid2">
@@ -873,11 +881,18 @@ async function saveDevis(){
       clientId=c.id;
     }
     const total=lignes.reduce((s,l)=>s+(+l.montant||0),0);
-    const dv=await db('devis',{method:'POST',prefer:'return=representation',body:{
-      company_id:S.company.id,numero:ED.numero,client_id:clientId,date_devis:ED.date,
-      statut:'brouillon',materiel_fourni_par:ED.mat,notes:ED.notes,total,
-      description_chantier:ED.descChantier||null,acompte_pct:parseFloat(ED.acompte)||null,duree_estimee:ED.duree||null,tva_rate:parseFloat(ED.tva)||0}});
-    const did=dv[0].id;
+    const body={numero:ED.numero,client_id:clientId,date_devis:ED.date,materiel_fourni_par:ED.mat,notes:ED.notes,total,
+      description_chantier:ED.descChantier||null,acompte_pct:parseFloat(ED.acompte)||null,duree_estimee:ED.duree||null,tva_rate:parseFloat(ED.tva)||0};
+    let did;
+    if(ED.id){
+      await db('devis',{method:'PATCH',query:`?id=eq.${ED.id}`,body});
+      did=ED.id;
+      await db('devis_lignes',{method:'DELETE',query:`?devis_id=eq.${ED.id}`});
+    } else {
+      body.company_id=S.company.id; body.statut='brouillon';
+      const dv=await db('devis',{method:'POST',prefer:'return=representation',body});
+      did=dv[0].id;
+    }
     await db('devis_lignes',{method:'POST',prefer:'return=representation',body:
       lignes.map((l,i)=>({devis_id:did,categorie:l.categorie,description:l.description,
         quantite:(l.unite!=='forfait'&&+l.quantite)?+l.quantite:null,
