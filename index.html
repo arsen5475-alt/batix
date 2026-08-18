@@ -915,18 +915,20 @@ const IC={
   co:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M8 8V5a2 2 0 012-2h4a2 2 0 012 2v3"/></svg>`,
   biblio:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2z"/><path d="M8 3v18"/></svg>`,
   chantier:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M6 21V9l6-4 6 4v12"/><path d="M9 21v-6h6v6"/></svg>`,
-  tresor:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h3"/></svg>`
+  tresor:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h3"/></svg>`,
+  ai:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l1.6 3.9L17.5 8l-3.9 1.6L12 13l-1.6-3.4L6.5 8l3.9-1.1L12 3z"/><path d="M18 14l.8 2 .2.8 2 .8-2 .8-.2.8-.8 2-.8-2-.2-.8-2-.8 2-.8.2-.8.8-2z"/></svg>`
 };
 function viewAccueil(){
   $('#view').innerHTML=`
     <div class="hero">
-      <h2>Assistant</h2>
-      <p>Bonjour${S.company?.nom?', '+esc(S.company.nom):''}. Décris les travaux — remplis le devis en un instant.</p>
-      <textarea class="inp" id="assist-txt" placeholder="Ex : peinture salon 40 m², plafond compris, 2 couches ; pose parquet 25 m²…"></textarea>
-      <button class="btn" onclick="assistCreate()">Créer un devis</button>
+      <h2>Assistant devis IA 🤖</h2>
+      <p>Décris les travaux — l'IA rédige le devis avec tes prix de la bibliothèque.</p>
+      <textarea class="inp" id="assist-txt" placeholder="Ex : rénovation salle de bain 8 m², dépose baignoire, douche italienne, carrelage murs et sol, peinture plafond…"></textarea>
+      <button class="btn" onclick="assistAI()">✨ Générer le devis avec l'IA</button>
     </div>
     <div class="section-label">Accès rapide</div>
     <div class="tiles">
+      <div class="tile" onclick="openAIDevis()" style="border-color:rgba(255,106,43,.5)"><div class="ic">${IC.ai}</div><div class="tt">Assistant IA</div><div class="ts">Devis depuis ton texte</div></div>
       <div class="tile" onclick="go('chantiers')"><div class="ic">${IC.chantier}</div><div class="tt">Chantiers</div><div class="ts">Matériaux, heures, marge</div></div>
       <div class="tile" onclick="go('compta')"><div class="ic">${IC.compta}</div><div class="tt">Comptabilité</div><div class="ts">Recettes, impayés, cotisations</div></div>
       <div class="tile" onclick="go('tresorerie')"><div class="ic">${IC.tresor}</div><div class="tt">Trésorerie</div><div class="ts">Ce qui doit rentrer</div></div>
@@ -1682,6 +1684,9 @@ const PRO_TEMPLATES={
 };
 function openProStudio(){ $('#pro-studio').classList.remove('hidden'); renderProTab('pilotage'); }
 function closeProStudio(){ $('#pro-studio').classList.add('hidden'); }
+window.openProStudio=openProStudio; window.closeProStudio=closeProStudio;
+window.openAIDevis=()=>{ $('#pro-studio').classList.remove('hidden'); document.querySelectorAll('.pro-tab').forEach(x=>x.classList.toggle('on',x.dataset.protab==='aidevis')); renderProTab('aidevis'); };
+window.assistAI=()=>{ const t=($('#assist-txt')?.value||'').trim(); openAIDevis(); setTimeout(()=>{ const ta=$('#ai-desc'); if(ta&&t){ ta.value=t; generateAIDevis(); } },80); };
 document.addEventListener('click',e=>{const b=e.target.closest('[data-protab]');if(b){document.querySelectorAll('.pro-tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderProTab(b.dataset.protab)}});
 function proTotal(d){return (d||[]).reduce((s,x)=>s+(+x.montant||(+x.quantite||0)*(+x.prix||0)),0)}
 function renderProTab(tab){
