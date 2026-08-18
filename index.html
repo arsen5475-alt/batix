@@ -706,7 +706,8 @@ function viewDash(){
   const paid=S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0);
   const unpaid=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);
   const dep=S.depenses.reduce((s,d)=>s+(+d.montant||0),0);
-  const marge=paid-dep;
+  const moDash=(S.heures||[]).reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const marge=paid-dep-moDash;
   const invoiced=new Set(S.factures.map(f=>f.devis_id));
   const pending=S.devis.filter(d=>d.statut==='brouillon').length;
   const rows=S.devis.length?`<div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Statut</div><div class="t">Total</div></div>${S.devis.slice(0,12).map(d=>`<div class="row"><div class="n">${esc(d.numero)}</div><div class="c">${esc(d.clients?.nom||'—')}</div><div class="d" style="color:var(--faint)">${fdate(d.date_devis)}</div><div><span class="chip ${d.statut}">${({brouillon:'Brouillon',accepte:'Accepté',refuse:'Refusé'})[d.statut]||d.statut}</span></div><div class="t">${eur(d.total)}<div class="act" style="margin-top:8px"><button class="btn ghost sm" onclick="openDoc('${d.id}')">PDF</button><button class="btn ghost sm" onclick="editDevis('${d.id}')">Éditer</button><button class="btn ghost sm" onclick="openDepenses('${d.id}')">Chantier</button>${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepter</button>`:(invoiced.has(d.id)?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Facture</button>`)}<button class="btn ghost sm" onclick="duplicateDevis('${d.id}')">Dupliquer</button><button class="btn ghost sm" onclick="shareDevisLink('${d.id}')">Signer</button><button class="btn ghost sm" onclick="delDevis('${d.id}')">Suppr.</button></div></div></div>`).join('')}`:`<div class="empty"><b>Aucun devis pour l'instant</b>Créez votre premier devis pour démarrer.</div>`;
@@ -723,7 +724,7 @@ function viewDash(){
       <div class="stat"><div class="k">CA encaissé</div><div class="v num accent">${eur(paid)}</div><div class="sub">${S.factures.filter(f=>f.statut==='payee').length} facture(s) payée(s)</div></div>
       <div class="stat"><div class="k">À encaisser</div><div class="v num">${eur(unpaid)}</div><div class="sub">factures ouvertes</div></div>
       <div class="stat"><div class="k">Devis acceptés</div><div class="v num">${eur(att)}</div><div class="sub">${acc.length} accepté(s)</div></div>
-      <div class="stat"><div class="k">Marge encaissée*</div><div class="v num" style="color:${marge>=0?'var(--ok)':'var(--bad)'}">${eur(marge)}</div><div class="sub">encaissements − dépenses</div></div>
+      <div class="stat"><div class="k">Marge encaissée*</div><div class="v num" style="color:${marge>=0?'var(--ok)':'var(--bad)'}">${eur(marge)}</div><div class="sub">encaissé − dépenses − MO</div></div>
     </div>
     <div class="dashboard-grid" style="margin-top:14px">
       <div class="dash-card"><div class="dash-title"><h3>Vue activité</h3><span class="muted">${nb} devis · ${S.clients.length} clients</span></div><div class="mini-list"><div class="mini-row"><span class="muted">Volume devis</span><b>${eur(totAll)}</b></div><div class="mini-row"><span class="muted">Dépenses enregistrées</span><b>${eur(dep)}</b></div><div class="mini-row"><span class="muted">Brouillons</span><b>${pending}</b></div><div class="mini-row"><span class="muted">Factures</span><b>${S.factures.length}</b></div></div></div>
@@ -957,9 +958,10 @@ function viewCompta(){
   const recettes=paid.reduce((s,f)=>s+(+f.total||0),0);
   const impayes=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);
   const depTot=S.depenses.reduce((s,x)=>s+(+x.montant||0),0);
+  const moTot=(S.heures||[]).reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
   const taux=(S.company.taux_cotisation!=null?+S.company.taux_cotisation:21.2);
   const cotis=recettes*taux/100;
-  const net=recettes-cotis-depTot;
+  const net=recettes-cotis-depTot-moTot;
   const mca=monthlyEncaisse(); const maxV=Math.max(1,...mca.map(x=>x.val));
   const chartBars=mca.map(x=>`<div class="bar"><div class="val">${x.val?new Intl.NumberFormat('fr-FR').format(Math.round(x.val)):''}</div><div class="b" style="height:${x.val?Math.max(3,Math.round(x.val/maxV*100)):0}%"></div><div class="lab">${x.label}</div></div>`).join('');
   const lignes=paid.length?paid.map(f=>`
@@ -975,12 +977,13 @@ function viewCompta(){
     <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
       <div class="stat"><div class="k">Recettes encaissées</div><div class="v num accent">${eur(recettes)}</div><div class="sub">${paid.length} facture${paid.length>1?'s':''} payée${paid.length>1?'s':''}</div></div>
       <div class="stat"><div class="k">Dépenses matériaux</div><div class="v num">${eur(depTot)}</div><div class="sub">tous chantiers</div></div>
+      <div class="stat"><div class="k">Main d'œuvre</div><div class="v num">${eur(moTot)}</div><div class="sub">heures chantiers</div></div>
       <div class="stat"><div class="k">Impayés</div><div class="v num">${eur(impayes)}</div><div class="sub">à encaisser</div></div>
       <div class="stat"><div class="k">Cotisations à prévoir</div><div class="v num">${eur(cotis)}</div><div class="sub">≈ ${taux}% des recettes</div></div>
     </div>
     <div class="panel" style="margin-top:2px">
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center">
-        <div><div style="color:var(--muted);font-size:13px">Net estimé (recettes − dépenses − cotisations)</div><div class="num" style="font-family:'Space Grotesk';font-size:24px;font-weight:700;margin-top:4px;color:${net>=0?'var(--ok)':'var(--bad)'}">${eur(net)}</div></div>
+        <div><div style="color:var(--muted);font-size:13px">Net estimé (recettes − dépenses − main d'œuvre − cotisations)</div><div class="num" style="font-family:'Space Grotesk';font-size:24px;font-weight:700;margin-top:4px;color:${net>=0?'var(--ok)':'var(--bad)'}">${eur(net)}</div></div>
         <div style="color:var(--faint);font-size:12px;max-width:44ch">Estimation indicative. Ajustez votre taux dans « Mon entreprise » (vérifiable sur autoentrepreneur.urssaf.fr).</div>
       </div>
     </div>
