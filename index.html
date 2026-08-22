@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Batix — Devis & Factures</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Batix">
+<meta name="theme-color" content="#0A0E1C">
+<link id="manifest" rel="manifest">
+<link id="appicon" rel="apple-touch-icon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -511,6 +518,33 @@ const $ = s=>document.querySelector(s);
 const eur = n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(+n||0);
 const esc = s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today = ()=>new Date().toISOString().slice(0,10);
+function daysBetween(a,b){ return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
+function dlFile(name,text,type){ const blob=new Blob([type&&type.indexOf('csv')>=0?'\ufeff'+text:text],{type:type||'text/plain;charset=utf-8'}); const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
+window.exportCompta=()=>{
+  const rows=[['Type','Numéro / Libellé','Client / Chantier','Date','Montant EUR']];
+  S.factures.forEach(f=>rows.push(['Facture '+(f.statut==='payee'?'payée':'à encaisser'),f.numero||'',(f.clients&&f.clients.nom)||'',f.date_facture||'',(+f.total||0).toFixed(2)]));
+  S.depenses.forEach(x=>{const dv=S.devis.find(d=>d.id===x.devis_id);rows.push(['Dépense',x.libelle||'',dv?dv.numero:'Sans chantier',x.date_depense||'','-'+(+x.montant||0).toFixed(2)]);});
+  (S.heures||[]).forEach(x=>{const dv=S.devis.find(d=>d.id===x.devis_id);rows.push(["Main d'oeuvre",(x.description||'Heures')+' ('+(+x.heures||0)+'h x '+(+x.taux_horaire||0)+')',dv?dv.numero:'',x.date_h||'','-'+((+x.heures||0)*(+x.taux_horaire||0)).toFixed(2)]);});
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+  dlFile('batix-comptabilite-'+today()+'.csv',csv,'text/csv;charset=utf-8');
+};
+window.exportBackup=()=>{
+  const data={exported:new Date().toISOString(),company:S.company,clients:S.clients,devis:S.devis,factures:S.factures,depenses:S.depenses,heures:S.heures,photos:S.photos,events:S.events,biblio:S.biblio};
+  dlFile('batix-sauvegarde-'+today()+'.json',JSON.stringify(data,null,2),'application/json');
+};
+(function initPWA(){
+  try{
+    const c=document.createElement('canvas'); c.width=c.height=512; const x=c.getContext('2d');
+    x.fillStyle='#0A0E1C'; x.fillRect(0,0,512,512);
+    const g=x.createLinearGradient(0,0,512,512); g.addColorStop(0,'#FF8038'); g.addColorStop(1,'#FF5E1E');
+    const a=96,b=96,w=320,hh=320,rad=72; x.beginPath(); x.moveTo(a+rad,b); x.arcTo(a+w,b,a+w,b+hh,rad); x.arcTo(a+w,b+hh,a,b+hh,rad); x.arcTo(a,b+hh,a,b,rad); x.arcTo(a,b,a+w,b,rad); x.closePath(); x.fillStyle=g; x.fill();
+    x.fillStyle='#160a03'; x.font='bold 230px Arial'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('B',256,276);
+    const png=c.toDataURL('image/png');
+    const ic=document.getElementById('appicon'); if(ic) ic.href=png;
+    const man={name:'Batix — Devis & Factures',short_name:'Batix',start_url:'.',scope:'.',display:'standalone',background_color:'#0A0E1C',theme_color:'#0A0E1C',icons:[{src:png,sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
+    const ml=document.getElementById('manifest'); if(ml) ml.href=URL.createObjectURL(new Blob([JSON.stringify(man)],{type:'application/manifest+json'}));
+  }catch(e){}
+})();
 const fdate = d=>d?new Date(d+'T00:00:00').toLocaleDateString('fr-FR'):'';
 function ligneDetail(l){
   const parts=[];
@@ -712,8 +746,18 @@ function viewDash(){
   const pending=S.devis.filter(d=>d.statut==='brouillon').length;
   const rows=S.devis.length?`<div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Statut</div><div class="t">Total</div></div>${S.devis.slice(0,12).map(d=>`<div class="row"><div class="n">${esc(d.numero)}</div><div class="c">${esc(d.clients?.nom||'—')}</div><div class="d" style="color:var(--faint)">${fdate(d.date_devis)}</div><div><span class="chip ${d.statut}">${({brouillon:'Brouillon',accepte:'Accepté',refuse:'Refusé'})[d.statut]||d.statut}</span></div><div class="t">${eur(d.total)}<div class="act" style="margin-top:8px"><button class="btn ghost sm" onclick="openDoc('${d.id}')">PDF</button><button class="btn ghost sm" onclick="editDevis('${d.id}')">Éditer</button><button class="btn ghost sm" onclick="openDepenses('${d.id}')">Chantier</button>${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepter</button>`:(invoiced.has(d.id)?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Facture</button>`)}<button class="btn ghost sm" onclick="duplicateDevis('${d.id}')">Dupliquer</button><button class="btn ghost sm" onclick="shareDevisLink('${d.id}')">Signer</button><button class="btn ghost sm" onclick="delDevis('${d.id}')">Suppr.</button></div></div></div>`).join('')}`:`<div class="empty"><b>Aucun devis pour l'instant</b>Créez votre premier devis pour démarrer.</div>`;
   const upcoming=S.events.filter(e=>e.date_event>=today()).sort((a,b)=>a.date_event.localeCompare(b.date_event)).slice(0,4);
+  const _t=today();
+  const overdue=S.factures.filter(f=>f.statut!=='payee'&&f.date_facture&&daysBetween(f.date_facture,_t)>30);
+  const todayEv=S.events.filter(e=>e.date_event===_t);
+  const staleDevis=S.devis.filter(d=>d.statut==='brouillon'&&d.date_devis&&daysBetween(d.date_devis,_t)>10);
+  const al=[];
+  if(overdue.length) al.push(`💸 ${overdue.length} facture(s) impayée(s) depuis +30 j — ${eur(overdue.reduce((s,f)=>s+(+f.total||0),0))}`);
+  if(todayEv.length) al.push(`📅 ${todayEv.length} rendez-vous aujourd'hui`);
+  if(staleDevis.length) al.push(`📄 ${staleDevis.length} devis en attente depuis +10 j`);
+  const alertsHtml=al.length?`<div class="panel" style="border-color:rgba(255,106,43,.45);background:linear-gradient(180deg,rgba(255,106,43,.08),transparent)"><b style="color:var(--accent-soft)">À suivre</b><div style="margin-top:8px;display:grid;gap:6px">${al.map(a=>`<div style="font-size:13.5px">${a}</div>`).join('')}</div></div>`:'';
   $('#view').innerHTML=`
     <div class="sec-head"><div><h2 style="margin-bottom:3px">Tableau de bord</h2><span class="badge-live">Espace entreprise actif</span></div><button class="btn" onclick="newDevis()">+ Nouveau devis</button></div>
+    ${alertsHtml}
     <div class="quick-actions">
       <div class="quick-action" onclick="newDevis()"><b>＋ Nouveau devis</b><span>Créer en quelques secondes</span></div>
       <div class="quick-action" onclick="go('factures')"><b>€ Factures</b><span>${eur(unpaid)} à encaisser</span></div>
@@ -973,7 +1017,7 @@ function viewCompta(){
       <div class="t">${eur(f.total)}</div>
     </div>`).join(''):`<div class="empty"><b>Aucune recette encaissée</b>Marquez une facture « Payée » pour la voir ici.</div>`;
   $('#view').innerHTML=`
-    <div class="sec-head"><h2>Comptabilité</h2></div>
+    <div class="sec-head"><h2>Comptabilité</h2><button class="btn ghost sm" onclick="exportCompta()">⬇ Export comptable (CSV)</button></div>
     <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
       <div class="stat"><div class="k">Recettes encaissées</div><div class="v num accent">${eur(recettes)}</div><div class="sub">${paid.length} facture${paid.length>1?'s':''} payée${paid.length>1?'s':''}</div></div>
       <div class="stat"><div class="k">Dépenses matériaux</div><div class="v num">${eur(depTot)}</div><div class="sub">tous chantiers</div></div>
@@ -1658,7 +1702,7 @@ function viewSettings(){
       </div>
       <label class="fld"><span>Modes de paiement</span><input class="inp" id="s-modes" placeholder="Virement bancaire   ·   Chèque" value="${esc(c.modes_paiement||'')}"></label>
       <label class="fld"><span>Assurance décennale (compagnie + n° contrat)</span><input class="inp" id="s-assur" placeholder="Ex : AXA — n° 12345678" value="${esc(c.assurance||'')}"></label>
-      <div class="editor-actions"><button class="btn" id="s-save">Enregistrer</button></div>
+      <div class="editor-actions" style="justify-content:space-between"><button class="btn ghost" onclick="exportBackup()">💾 Sauvegarde (JSON)</button><button class="btn" id="s-save">Enregistrer</button></div>
     </div>`;
   $('#s-save').onclick=async()=>{
     const btn=$('#s-save');btn.disabled=true;btn.textContent='…';
