@@ -495,6 +495,7 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
 
 <div id="doc-wrap" class="hidden"></div>
 <div id="bpick" class="hidden" style="position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);padding:8vh 18px 18px"></div>
+<div id="fmodal" class="hidden" style="position:fixed;inset:0;z-index:112;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);padding:10vh 18px 18px"></div>
 <div id="public" class="hidden"></div>
 <div id="pro-studio" class="hidden">
   <div class="pro-shell">
@@ -744,7 +745,7 @@ function viewDash(){
   const marge=paid-dep-moDash;
   const invoiced=new Set(S.factures.map(f=>f.devis_id));
   const pending=S.devis.filter(d=>d.statut==='brouillon').length;
-  const rows=S.devis.length?`<div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Statut</div><div class="t">Total</div></div>${S.devis.slice(0,12).map(d=>`<div class="row"><div class="n">${esc(d.numero)}</div><div class="c">${esc(d.clients?.nom||'—')}</div><div class="d" style="color:var(--faint)">${fdate(d.date_devis)}</div><div><span class="chip ${d.statut}">${({brouillon:'Brouillon',accepte:'Accepté',refuse:'Refusé'})[d.statut]||d.statut}</span></div><div class="t">${eur(d.total)}<div class="act" style="margin-top:8px"><button class="btn ghost sm" onclick="openDoc('${d.id}')">PDF</button><button class="btn ghost sm" onclick="editDevis('${d.id}')">Éditer</button><button class="btn ghost sm" onclick="openDepenses('${d.id}')">Chantier</button>${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepter</button>`:(invoiced.has(d.id)?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Facture</button>`)}<button class="btn ghost sm" onclick="duplicateDevis('${d.id}')">Dupliquer</button><button class="btn ghost sm" onclick="shareDevisLink('${d.id}')">Signer</button><button class="btn ghost sm" onclick="delDevis('${d.id}')">Suppr.</button></div></div></div>`).join('')}`:`<div class="empty"><b>Aucun devis pour l'instant</b>Créez votre premier devis pour démarrer.</div>`;
+  const rows=S.devis.length?`<div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Statut</div><div class="t">Total</div></div>${S.devis.slice(0,12).map(d=>`<div class="row"><div class="n">${esc(d.numero)}</div><div class="c">${esc(d.clients?.nom||'—')}</div><div class="d" style="color:var(--faint)">${fdate(d.date_devis)}</div><div><span class="chip ${d.statut}">${({brouillon:'Brouillon',accepte:'Accepté',refuse:'Refusé'})[d.statut]||d.statut}</span></div><div class="t">${eur(d.total)}<div class="act" style="margin-top:8px"><button class="btn ghost sm" onclick="openDoc('${d.id}')">PDF</button><button class="btn ghost sm" onclick="editDevis('${d.id}')">Éditer</button><button class="btn ghost sm" onclick="openDepenses('${d.id}')">Chantier</button>${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepter</button>`:(factureRestant(d.id).restant<=0.5?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Facture</button>`)}<button class="btn ghost sm" onclick="duplicateDevis('${d.id}')">Dupliquer</button><button class="btn ghost sm" onclick="shareDevisLink('${d.id}')">Signer</button><button class="btn ghost sm" onclick="delDevis('${d.id}')">Suppr.</button></div></div></div>`).join('')}`:`<div class="empty"><b>Aucun devis pour l'instant</b>Créez votre premier devis pour démarrer.</div>`;
   const upcoming=S.events.filter(e=>e.date_event>=today()).sort((a,b)=>a.date_event.localeCompare(b.date_event)).slice(0,4);
   const _t=today();
   const overdue=S.factures.filter(f=>f.statut!=='payee'&&f.date_facture&&daysBetween(f.date_facture,_t)>30);
@@ -1170,15 +1171,36 @@ window.delDepense=async(id)=>{
 };
 
 /* ---- FACTURES ---- */
-window.createFacture = async (devisId)=>{
+function factureRestant(devisId){
+  const d=S.devis.find(x=>x.id===devisId); const tot=+((d&&d.total)||0);
+  const dejafac=S.factures.filter(f=>f.devis_id===devisId).reduce((s,f)=>s+(+f.total||0),0);
+  return {tot, dejafac, restant:Math.max(0,Math.round((tot-dejafac)*100)/100)};
+}
+window.createFacture=(devisId)=>{
   const d=S.devis.find(x=>x.id===devisId); if(!d)return;
-  const y=new Date().getFullYear();
-  const seq=String(S.factures.length+1).padStart(3,'0');
+  const r=factureRestant(devisId);
+  const ac=(+d.acompte_pct||0)>0? Math.round(r.tot*(+d.acompte_pct)/100*100)/100 : 0;
+  const el=$('#fmodal'); el.classList.remove('hidden');
+  el.innerHTML=`<div style="max-width:470px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 30px 90px rgba(0,0,0,.55)">
+    <h3 style="margin:0 0 4px">Créer une facture — ${esc(d.numero)}</h3>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Total devis (HT) : ${eur(r.tot)}<br>Déjà facturé : ${eur(r.dejafac)} · Restant : <b style="color:var(--accent-soft)">${eur(r.restant)}</b></p>
+    <div style="display:grid;gap:8px">
+      ${(ac>0&&ac<=r.restant)?`<button class="btn ghost" style="justify-content:space-between" onclick="doFacture('${devisId}',${ac},'acompte')"><span>Acompte ${+d.acompte_pct} %</span><b>${eur(ac)}</b></button>`:''}
+      ${r.restant>0?`<button class="btn ghost" style="justify-content:space-between" onclick="doFacture('${devisId}',${r.restant},'${r.dejafac>0?'solde':'complete'}')"><span>${r.dejafac>0?'Solde restant':'Total du devis'}</span><b>${eur(r.restant)}</b></button>`:'<div style="color:var(--ok);font-size:13px;text-align:center;padding:6px">Devis entièrement facturé ✓</div>'}
+      <label class="fld" style="margin-top:6px"><span>Ou montant personnalisé (€ HT)</span><input class="inp" id="fm-custom" type="number" step="0.01" placeholder="0"></label>
+      <button class="btn" onclick="doFactureCustom('${devisId}')">Créer avec ce montant</button>
+    </div>
+    <div style="text-align:right;margin-top:12px"><button class="btn ghost sm" onclick="closeFModal()">Annuler</button></div>
+  </div>`;
+};
+window.closeFModal=()=>{ $('#fmodal').classList.add('hidden'); $('#fmodal').innerHTML=''; };
+window.doFactureCustom=(devisId)=>{ const v=parseFloat($('#fm-custom').value)||0; if(v<=0){ alert('Montant invalide.'); return; } doFacture(devisId,v,'normale'); };
+window.doFacture=async(devisId,montant,type)=>{
+  const d=S.devis.find(x=>x.id===devisId); if(!d)return;
+  const y=new Date().getFullYear(); const seq=String(S.factures.length+1).padStart(3,'0');
   try{
-    await db('factures',{method:'POST',prefer:'return=representation',body:{
-      company_id:S.company.id,numero:`FAC-${y}-${seq}`,devis_id:devisId,client_id:d.client_id,
-      date_facture:today(),statut:'creee',total:d.total,montant_paye:0}});
-    await loadData(); go('factures');
+    await db('factures',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,numero:`FAC-${y}-${seq}`,devis_id:devisId,client_id:d.client_id,date_facture:today(),statut:'creee',total:Math.round(montant*100)/100,montant_paye:0,type:type||'normale'}});
+    closeFModal(); await loadData(); go('factures');
   }catch(e){ alert(e.message); }
 };
 window.setFacturePaid = async (id)=>{
@@ -1206,7 +1228,7 @@ function viewFactures(){
     <div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Paiement</div><div class="t">Total</div></div>
     ${fac.map(f=>`
       <div class="row">
-        <div class="n">${esc(f.numero)}</div>
+        <div class="n">${esc(f.numero)}${f.type==='acompte'?' <span class="evtag">Acompte</span>':(f.type==='solde'?' <span class="evtag">Solde</span>':'')}</div>
         <div class="c">${esc(f.clients?.nom||'—')}</div>
         <div class="d" style="color:var(--faint)">${fdate(f.date_facture)}</div>
         <div><span class="chip ${f.statut}">${labels[f.statut]||f.statut}</span></div>
@@ -1234,13 +1256,18 @@ window.openFacture = id=>{
   const f=S.factures.find(x=>x.id===id); if(!f)return;
   const co=S.company; const dv=S.devis.find(x=>x.id===f.devis_id);
   const client=S.clients.find(c=>c.id===f.client_id)||{};
-  const lignes=(dv&&dv.devis_lignes)?dv.devis_lignes.slice().sort((a,b)=>a.ordre-b.ordre):[];
+  const lsum=(dv&&dv.devis_lignes)?dv.devis_lignes.reduce((s,l)=>s+(+l.montant||0),0):0;
+  const partial=(f.type==='acompte'||f.type==='solde'||f.type==='normale'||Math.abs(lsum-(+f.total||0))>0.5);
+  const label=f.type==='acompte'?`Acompte sur devis ${dv?dv.numero:''}`:(f.type==='solde'?`Solde des travaux — devis ${dv?dv.numero:''}`:`Prestation — devis ${dv?dv.numero:''}`);
+  const lignes=(partial||!dv||!dv.devis_lignes)
+    ? [{categorie:label,description:(dv&&dv.description_chantier)||'',quantite:1,unite:'forfait',prix_unitaire:+f.total||0,montant:+f.total||0}]
+    : dv.devis_lignes.slice().sort((a,b)=>a.ordre-b.ordre);
   _curDoc={ title:`Facture ${f.numero}`, filename:`Facture-${f.numero}.pdf`, clientEmail:client.email||'',
     subject:`Facture ${f.numero} — ${co.nom||'Batix'}`,
     body:`Bonjour,\n\nVeuillez trouver ci-joint votre facture ${f.numero}.\n\nCordialement,\n${co.nom||''}` };
   const inner=buildDocHTML('facture',{ numero:f.numero, date:f.date_facture, refDevis:dv?dv.numero:'',
     clientNom:f.clients?.nom||client.nom||'', clientAdresse:client.adresse||'',
-    desc:dv?dv.description_chantier:'', lignes, total:+f.total||0, tvaRate:dv?(+dv.tva_rate||0):0, paid:f.statut==='payee' });
+    desc:dv?dv.description_chantier:'', lignes, total:+f.total||0, tvaRate:dv?(+dv.tva_rate||0):0, factureType:f.type, paid:f.statut==='payee' });
   $('#doc-wrap').innerHTML = docToolbar()+inner;
   $('#doc-wrap').classList.remove('hidden'); document.body.style.overflow='hidden';
 };
@@ -1273,6 +1300,7 @@ function buildDocHTML(kind,o){
       <div>
         <div class="dbig">${isFac?'FACTURE':'DEVIS'}</div>
         <div class="dnum">n° ${esc(o.numero)}</div>
+        ${isFac&&o.factureType&&o.factureType!=='complete'?`<div class="dmeta" style="color:#3f9d8c">${o.factureType==='acompte'?"Facture d'acompte":'Facture de solde'}</div>`:''}
         <div class="dmeta">En date du : ${fdate(o.date)}</div>
         ${!isFac&&o.valide?`<div class="dmeta">Valide jusqu'au : ${o.valide}</div>`:''}
         ${!isFac&&o.duree?`<div class="dmeta">Durée estimée : ${esc(o.duree)}</div>`:''}
