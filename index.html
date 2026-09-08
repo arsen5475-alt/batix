@@ -1185,16 +1185,35 @@ window.createFacture=(devisId)=>{
     <h3 style="margin:0 0 4px">Créer une facture — ${esc(d.numero)}</h3>
     <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Total devis (HT) : ${eur(r.tot)}<br>Déjà facturé : ${eur(r.dejafac)} · Restant : <b style="color:var(--accent-soft)">${eur(r.restant)}</b></p>
     <div style="display:grid;gap:8px">
-      ${(ac>0&&ac<=r.restant)?`<button class="btn ghost" style="justify-content:space-between" onclick="doFacture('${devisId}',${ac},'acompte')"><span>Acompte ${+d.acompte_pct} %</span><b>${eur(ac)}</b></button>`:''}
+      ${(ac>0&&ac<=r.restant)?`<button class="btn ghost" style="justify-content:space-between" onclick="doFacture('${devisId}',${ac},'acompte')"><span>Acompte prévu ${+d.acompte_pct} %</span><b>${eur(ac)}</b></button>`:''}
       ${r.restant>0?`<button class="btn ghost" style="justify-content:space-between" onclick="doFacture('${devisId}',${r.restant},'${r.dejafac>0?'solde':'complete'}')"><span>${r.dejafac>0?'Solde restant':'Total du devis'}</span><b>${eur(r.restant)}</b></button>`:'<div style="color:var(--ok);font-size:13px;text-align:center;padding:6px">Devis entièrement facturé ✓</div>'}
-      <label class="fld" style="margin-top:6px"><span>Ou montant personnalisé (€ HT)</span><input class="inp" id="fm-custom" type="number" step="0.01" placeholder="0"></label>
-      <button class="btn" onclick="doFactureCustom('${devisId}')">Créer avec ce montant</button>
+      <div style="border-top:1px solid var(--line);margin:6px 0 2px;padding-top:12px">
+        <div class="grid2">
+          <label class="fld"><span>Montant (€ HT)</span><input class="inp" id="fm-eur" type="number" step="0.01" placeholder="0" oninput="fmSync('eur',${r.tot})"></label>
+          <label class="fld"><span>= Pourcentage</span><input class="inp" id="fm-pct" type="number" step="0.1" placeholder="0" oninput="fmSync('pct',${r.tot})"></label>
+        </div>
+        <div id="fm-info" style="font-size:12px;color:var(--faint);margin:-4px 0 10px">Saisis un montant OU un %, l'autre se calcule tout seul.</div>
+        <button class="btn block" onclick="doFactureCustom('${devisId}',${r.restant})">Créer cette facture</button>
+      </div>
     </div>
     <div style="text-align:right;margin-top:12px"><button class="btn ghost sm" onclick="closeFModal()">Annuler</button></div>
   </div>`;
 };
+window.fmSync=(from,tot)=>{
+  const e=$('#fm-eur'), p=$('#fm-pct'), info=$('#fm-info');
+  if(from==='eur'){ const v=parseFloat(e.value)||0; p.value=tot?(Math.round(v/tot*1000)/10):0; }
+  else{ const v=parseFloat(p.value)||0; e.value=Math.round(tot*v/100*100)/100; }
+  const val=parseFloat(e.value)||0;
+  if(info) info.textContent = val>0 ? `${eur(val)} = ${p.value||0}% du devis` : "Saisis un montant OU un %, l'autre se calcule tout seul.";
+};
 window.closeFModal=()=>{ $('#fmodal').classList.add('hidden'); $('#fmodal').innerHTML=''; };
-window.doFactureCustom=(devisId)=>{ const v=parseFloat($('#fm-custom').value)||0; if(v<=0){ alert('Montant invalide.'); return; } doFacture(devisId,v,'normale'); };
+window.doFactureCustom=(devisId,restant)=>{
+  const v=parseFloat($('#fm-eur').value)||0;
+  if(v<=0){ alert('Indique un montant ou un %.'); return; }
+  if(restant!=null && v>restant+0.5){ if(!confirm(`Ce montant (${eur(v)}) dépasse le restant à facturer (${eur(restant)}). Continuer quand même ?`)) return; }
+  const d=S.devis.find(x=>x.id===devisId); const dejafac=factureRestant(devisId).dejafac;
+  doFacture(devisId,v,dejafac>0?'solde':'acompte');
+};
 window.doFacture=async(devisId,montant,type)=>{
   const d=S.devis.find(x=>x.id===devisId); if(!d)return;
   const y=new Date().getFullYear(); const seq=String(S.factures.length+1).padStart(3,'0');
@@ -1606,6 +1625,7 @@ function viewBiblio(){
           <div class="bib-price">${eur(b.prix_unitaire)}<small>/${esc(b.unite||'u')}</small></div>
           <div class="bib-actions"><button class="btn ghost sm" onclick="editBiblio('${b.id}')">Éditer</button><button class="btn ghost sm" onclick="delBiblio('${b.id}')">✕</button></div>
         </div>
+        ${(()=>{const th=(+S.company.taux_horaire||0);const cm=+b.cout_materiel||0;const mo=(+b.heures_unite||0)*th;const cost=cm+mo;const pv=+b.prix_unitaire||0;const marge=pv-cost;if(cost<=0)return '';return `<div style="font-size:11.5px;color:var(--faint);border-top:1px solid var(--line);margin-top:10px;padding-top:8px">Coût ≈ ${eur(cost)} (mat ${eur(cm)} + MO ${eur(mo)}) · Marge <b style="color:${marge>=0?'var(--ok)':'var(--bad)'}">${eur(marge)}</b></div>`;})()}
       </div>`).join('')+`</div>`
     : `<div class="card"><div class="empty"><b>${(_bq||_bfilter!=='tous')?'Aucun article':'Bibliothèque vide'}</b>Ajoutez vos ouvrages et matériaux avec leurs prix, réutilisables dans chaque devis.</div></div>`;
   $('#view').innerHTML=`
@@ -1627,19 +1647,34 @@ window.editBiblio=(id)=>{
       </div>
       <label class="fld"><span>Désignation</span><input class="inp" id="bf-des" value="${esc(b.designation||'')}" placeholder="Ex : Pose carrelage sol"></label>
       <label class="fld"><span>Description (optionnel)</span><input class="inp" id="bf-desc" value="${esc(b.description||'')}" placeholder="Ex : colle + joints compris"></label>
-      <label class="fld"><span>Prix unitaire (€)</span><input class="inp" id="bf-prix" type="number" step="0.01" value="${b.prix_unitaire??''}"></label>
+      <label class="fld"><span>Prix unitaire de vente (€)</span><input class="inp" id="bf-prix" type="number" step="0.01" value="${b.prix_unitaire??''}" oninput="bfCalc()"></label>
+      <div class="grid2">
+        <label class="fld"><span>Coût matériel / unité (€)</span><input class="inp" id="bf-cm" type="number" step="0.01" value="${b.cout_materiel??''}" placeholder="0" oninput="bfCalc()"></label>
+        <label class="fld"><span>Heures / unité</span><input class="inp" id="bf-hu" type="number" step="0.05" value="${b.heures_unite??''}" placeholder="Ex : 0.8" oninput="bfCalc()"></label>
+      </div>
+      <div id="bf-calc" style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px"></div>
       <div class="editor-actions"><button class="btn" id="bf-save">Enregistrer</button></div>
     </div>`;
+  bfCalc();
   $('#bf-save').onclick=async()=>{
     const des=$('#bf-des').value.trim(); if(!des){$('#bf-msg').innerHTML='<div class="msg err">La désignation est requise.</div>';return;}
     const btn=$('#bf-save');btn.disabled=true;btn.textContent='…';
-    const body={type:$('#bf-type').value,unite:$('#bf-unite').value,designation:des,description:$('#bf-desc').value.trim()||null,prix_unitaire:parseFloat($('#bf-prix').value)||0};
+    const body={type:$('#bf-type').value,unite:$('#bf-unite').value,designation:des,description:$('#bf-desc').value.trim()||null,prix_unitaire:parseFloat($('#bf-prix').value)||0,cout_materiel:parseFloat($('#bf-cm').value)||0,heures_unite:parseFloat($('#bf-hu').value)||0};
     try{
       if(id){ const r=await db('bibliotheque',{method:'PATCH',query:`?id=eq.${id}`,prefer:'return=representation',body}); Object.assign(S.biblio.find(x=>x.id===id),r[0]); }
       else{ body.company_id=S.company.id; const r=await db('bibliotheque',{method:'POST',prefer:'return=representation',body}); S.biblio.push(r[0]); }
       go('biblio');
     }catch(e){$('#bf-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`;btn.disabled=false;btn.textContent='Enregistrer';}
   };
+};
+window.bfCalc=()=>{
+  const box=$('#bf-calc'); if(!box)return;
+  const th=(+S.company.taux_horaire||0);
+  const pv=parseFloat($('#bf-prix')?.value)||0, cm=parseFloat($('#bf-cm')?.value)||0, hu=parseFloat($('#bf-hu')?.value)||0;
+  const mo=hu*th, cost=cm+mo, marge=pv-cost, pct=pv?Math.round(marge/pv*1000)/10:0;
+  box.innerHTML = th<=0
+    ? `<span style="color:var(--warn)">Renseigne ton taux horaire dans « Mon entreprise » pour calculer le coût main d'œuvre.</span>`
+    : `Coût matériel : <b>${eur(cm)}</b> · Main d'œuvre : <b>${eur(mo)}</b> (${hu||0} h × ${eur(th)})<br>Coût total/unité : <b>${eur(cost)}</b> → Marge : <b style="color:${marge>=0?'var(--ok)':'var(--bad)'}">${eur(marge)} (${pct}%)</b>`;
 };
 window.delBiblio=async(id)=>{ if(!confirm('Supprimer cet article ?'))return; try{ await db('bibliotheque',{method:'DELETE',query:`?id=eq.${id}`}); S.biblio=S.biblio.filter(x=>x.id!==id); viewBiblio(); }catch(e){alert(e.message);} };
 
@@ -1720,6 +1755,7 @@ function viewSettings(){
           <option value="true" ${c.tva_applicable?'selected':''}>TVA applicable</option>
         </select></label>
       <label class="fld"><span>Taux de cotisations (%) — pour la Comptabilité</span><input class="inp" id="s-taux" type="number" step="0.1" value="${c.taux_cotisation!=null?c.taux_cotisation:21.2}"></label>
+      <label class="fld"><span>Taux horaire main d'œuvre (€/h) — pour les coûts & marges</span><input class="inp" id="s-th" type="number" step="0.5" value="${c.taux_horaire!=null?c.taux_horaire:''}" placeholder="Ex : 35"></label>
       <div class="grid2">
         <label class="fld"><span>RCS / mentions</span><input class="inp" id="s-rcs" placeholder="Ex : RCS Marseille 850 263 989" value="${esc(c.rcs||'')}"></label>
         <label class="fld"><span>Titulaire du compte</span><input class="inp" id="s-titul" placeholder="Ex : NOVIKOV ARSEN (EI)" value="${esc(c.titulaire_compte||'')}"></label>
@@ -1737,6 +1773,7 @@ function viewSettings(){
     const body={nom:$('#s-nom').value.trim(),siret:$('#s-siret').value.trim(),adresse:$('#s-adr').value.trim(),
       telephone:$('#s-tel').value.trim(),email:$('#s-mail').value.trim(),tva_applicable:$('#s-tva').value==='true',
       taux_cotisation:parseFloat($('#s-taux').value)||0,
+      taux_horaire:parseFloat($('#s-th').value)||0,
       rcs:$('#s-rcs').value.trim()||null,titulaire_compte:$('#s-titul').value.trim()||null,
       iban:$('#s-iban').value.trim()||null,bic:$('#s-bic').value.trim()||null,
       modes_paiement:$('#s-modes').value.trim()||null,assurance:$('#s-assur').value.trim()||null};
