@@ -473,6 +473,7 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
       <button data-view="tresorerie">Trésorerie</button>
       <button data-view="clients">Clients</button>
       <button data-view="biblio">Bibliothèque</button>
+      <button data-view="ouvriers">Brigade</button>
       <button data-view="carte">Carte</button>
       <button data-view="settings">Mon entreprise</button><button onclick="openProStudio()" class="pro-nav">⚡ Batix Pro</button>
     </div>
@@ -513,8 +514,9 @@ const SUPABASE_URL = 'https://llakesuqcugmdniaqdjr.supabase.co';
 const AI_FN = 'https://llakesuqcugmdniaqdjr.supabase.co/functions/v1/ai-devis';
 const SUPABASE_KEY = 'sb_publishable_SCBPyFQ7ktB9Znho8MM6kg_w-cphtSI';
 
-const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], photos:[], heures:[], mode:'signup' };
+const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], photos:[], heures:[], ouvriers:[], mode:'signup' };
 const TYPEL={ouvrage:'Ouvrage',materiel:'Matériel',fourniture:'Fourniture'};
+const METIERS=['Peintre','Électricien','Plombier','Carreleur','Parquettiste','Manœuvre'];
 const $ = s=>document.querySelector(s);
 const eur = n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(+n||0);
 const esc = s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -716,6 +718,7 @@ function go(v){
   if(v==='factures') viewFactures();
   if(v==='clients') viewClients();
   if(v==='biblio') viewBiblio();
+  if(v==='ouvriers') viewOuvriers();
   if(v==='carte') viewCarte();
   if(v==='settings') viewSettings();
   if(v==='editor') viewEditor();
@@ -731,6 +734,7 @@ async function loadData(){
   S.biblio = await db('bibliotheque',{query:`?select=*&company_id=eq.${S.company.id}&order=designation`});
   try{ S.photos = await db('chantier_photos',{query:`?select=*&company_id=eq.${S.company.id}&order=created_at.desc`}); }catch(e){ S.photos=[]; }
   try{ S.heures = await db('heures',{query:`?select=*&company_id=eq.${S.company.id}&order=date_h.desc`}); }catch(e){ S.heures=[]; }
+  try{ S.ouvriers = await db('ouvriers',{query:`?select=*&company_id=eq.${S.company.id}&order=nom`}); }catch(e){ S.ouvriers=[]; }
 }
 
 /* ---- DASHBOARD ---- */
@@ -962,7 +966,8 @@ const IC={
   biblio:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2z"/><path d="M8 3v18"/></svg>`,
   chantier:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M6 21V9l6-4 6 4v12"/><path d="M9 21v-6h6v6"/></svg>`,
   tresor:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h3"/></svg>`,
-  ai:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l1.6 3.9L17.5 8l-3.9 1.6L12 13l-1.6-3.4L6.5 8l3.9-1.1L12 3z"/><path d="M18 14l.8 2 .2.8 2 .8-2 .8-.2.8-.8 2-.8-2-.2-.8-2-.8 2-.8.2-.8.8-2z"/></svg>`
+  ai:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l1.6 3.9L17.5 8l-3.9 1.6L12 13l-1.6-3.4L6.5 8l3.9-1.1L12 3z"/><path d="M18 14l.8 2 .2.8 2 .8-2 .8-.2.8-.8 2-.8-2-.2-.8-2-.8 2-.8.2-.8.8-2z"/></svg>`,
+  brigade:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><path d="M16 5a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>`
 };
 function viewAccueil(){
   $('#view').innerHTML=`
@@ -976,6 +981,7 @@ function viewAccueil(){
     <div class="tiles">
       <div class="tile" onclick="openAIDevis()" style="border-color:rgba(255,106,43,.5)"><div class="ic">${IC.ai}</div><div class="tt">Assistant IA</div><div class="ts">Devis depuis ton texte</div></div>
       <div class="tile" onclick="go('chantiers')"><div class="ic">${IC.chantier}</div><div class="tt">Chantiers</div><div class="ts">Matériaux, heures, marge</div></div>
+      <div class="tile" onclick="go('ouvriers')"><div class="ic">${IC.brigade}</div><div class="tt">Brigade</div><div class="ts">Équipe & heures par métier</div></div>
       <div class="tile" onclick="go('compta')"><div class="ic">${IC.compta}</div><div class="tt">Comptabilité</div><div class="ts">Recettes, impayés, cotisations</div></div>
       <div class="tile" onclick="go('tresorerie')"><div class="ic">${IC.tresor}</div><div class="tt">Trésorerie</div><div class="ts">Ce qui doit rentrer</div></div>
       <div class="tile" onclick="go('factures')"><div class="ic">${IC.fac}</div><div class="tt">Factures</div><div class="ts">Suivi des paiements</div></div>
@@ -1065,6 +1071,38 @@ window.delDepenseC=async(id)=>{
   catch(e){ alert(e.message); }
 };
 
+function viewOuvriers(){
+  const cards=S.ouvriers.length?S.ouvriers.map(o=>{
+    const h=clientHue(o.nom||''); const hh=(S.heures||[]).filter(x=>x.ouvrier_id===o.id);
+    const th=hh.reduce((s,x)=>s+(+x.heures||0),0); const co=hh.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+    return `<div class="cl-card2">
+      <div class="cl-top"><div class="cl-ava" style="background:linear-gradient(135deg,hsl(${h},60%,55%),hsl(${(h+40)%360},58%,44%))">${esc(clientInitials(o.nom))}</div>
+        <div style="flex:1;min-width:0"><div class="cl-name">${esc(o.nom)}</div><span class="muted" style="font-size:12px">${esc(o.metier||'')}</span></div></div>
+      <div class="cl-stats"><div><b>${eur(o.taux_horaire)}</b><span>€ / heure</span></div><div><b>${th}</b><span>heures</span></div><div><b>${eur(co)}</b><span>coût total</span></div></div>
+      <div class="cl-actions"><button class="btn ghost sm" onclick="editOuvrier('${o.id}')">Modifier</button><button class="btn ghost sm" onclick="delOuvrier('${o.id}')">Suppr.</button></div>
+    </div>`;
+  }).join(''):`<div class="empty" style="grid-column:1/-1"><b>Aucun ouvrier</b>Ajoute ton équipe pour suivre qui fait quoi sur chaque chantier.</div>`;
+  $('#view').innerHTML=`<div class="sec-head"><h2>Brigade</h2><button class="btn" onclick="editOuvrier()">+ Ouvrier</button></div><div class="clients-grid">${cards}</div>`;
+}
+window.editOuvrier=(id)=>{
+  const o=id?S.ouvriers.find(x=>x.id===id):{metier:'Peintre'};
+  $('#view').innerHTML=`<div class="sec-head"><h2>${id?"Modifier l'ouvrier":'Nouvel ouvrier'}</h2><button class="btn ghost" onclick="go('ouvriers')">← Retour</button></div><div id="ov-msg"></div><div class="panel">
+    <label class="fld"><span>Nom</span><input class="inp" id="ov-nom" value="${esc(o.nom||'')}" placeholder="Ex : Ivan"></label>
+    <div class="grid2"><label class="fld"><span>Métier</span><select class="inp" id="ov-metier">${METIERS.map(m=>`<option ${o.metier===m?'selected':''}>${m}</option>`).join('')}</select></label>
+    <label class="fld"><span>Taux horaire (€)</span><input class="inp" id="ov-taux" type="number" step="0.5" value="${o.taux_horaire??''}" placeholder="Ex : 30"></label></div>
+    <div class="editor-actions"><button class="btn" id="ov-save">Enregistrer</button></div></div>`;
+  $('#ov-save').onclick=async()=>{
+    const nom=$('#ov-nom').value.trim(); if(!nom){$('#ov-msg').innerHTML='<div class="msg err">Le nom est requis.</div>';return;}
+    const btn=$('#ov-save');btn.disabled=true;btn.textContent='…';
+    const body={nom,metier:$('#ov-metier').value,taux_horaire:parseFloat($('#ov-taux').value)||0};
+    try{ if(id){const r=await db('ouvriers',{method:'PATCH',query:`?id=eq.${id}`,prefer:'return=representation',body});Object.assign(S.ouvriers.find(x=>x.id===id),r[0]);}
+      else{body.company_id=S.company.id;const r=await db('ouvriers',{method:'POST',prefer:'return=representation',body});S.ouvriers.push(r[0]);}
+      go('ouvriers'); }catch(e){$('#ov-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`;btn.disabled=false;btn.textContent='Enregistrer';}
+  };
+};
+window.delOuvrier=async(id)=>{ if(!confirm('Supprimer cet ouvrier ?'))return; try{ await db('ouvriers',{method:'DELETE',query:`?id=eq.${id}`}); S.ouvriers=S.ouvriers.filter(x=>x.id!==id); viewOuvriers(); }catch(e){alert(e.message);} };
+window.hrPickOuvrier=()=>{ const sel=$('#hr-ouv'); if(!sel)return; const opt=sel.options[sel.selectedIndex]; if(!opt||!opt.value)return; const taux=opt.getAttribute('data-taux'); const met=opt.getAttribute('data-metier'); if(taux&&+taux>0)$('#hr-t').value=+taux; if(met){ const ms=$('#hr-metier'); if(ms)[...ms.options].forEach(o=>{ if(o.text===met||o.value===met) ms.value=o.value; }); } };
+
 function chantierNums(d){
   const mat=S.depenses.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.montant||0),0);
   const mo=S.heures.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
@@ -1101,7 +1139,14 @@ function viewDepenses(){
   const totalH=hrs.reduce((s,x)=>s+(+x.heures||0),0);
   const total=+d.total||0; const marge=total-mat-mo; const av=+d.avancement||0;
   const matRows=deps.length?deps.map(x=>`<div class="row" style="grid-template-columns:1.6fr auto auto"><div class="n" style="font-family:inherit;font-weight:500">${esc(x.libelle)}${x.justificatif_url?` <a href="${esc(x.justificatif_url)}" target="_blank" style="color:var(--accent-soft);font-size:12px;margin-left:6px">🧾</a>`:''}</div><div class="d" style="color:var(--faint)">${fdate(x.date_depense)}</div><div class="t">${eur(x.montant)}<button class="btn ghost sm" style="margin-left:10px" onclick="delDepense('${x.id}')">✕</button></div></div>`).join(''):`<div class="empty" style="padding:20px"><b>Aucun matériau</b></div>`;
-  const hrRows=hrs.length?hrs.map(x=>`<div class="row" style="grid-template-columns:1.6fr auto auto"><div class="n" style="font-family:inherit;font-weight:500">${esc(x.description||'Main d'+"'"+'œuvre')}<div style="color:var(--faint);font-size:12px">${(+x.heures||0)} h × ${eur(x.taux_horaire)} · ${fdate(x.date_h)}</div></div><div class="t">${eur((+x.heures||0)*(+x.taux_horaire||0))}<button class="btn ghost sm" style="margin-left:10px" onclick="delHeure('${x.id}')">✕</button></div><div></div></div>`).join(''):`<div class="empty" style="padding:20px"><b>Aucune heure saisie</b></div>`;
+  const hrRows=hrs.length?hrs.map(x=>{
+    const ov=(S.ouvriers||[]).find(o=>o.id===x.ouvrier_id);
+    const who=ov?ov.nom:(x.metier||"Main d'œuvre");
+    const sub=[x.metier,x.description].filter(Boolean).join(' · ');
+    return `<div class="row" style="grid-template-columns:1.6fr auto auto"><div class="n" style="font-family:inherit;font-weight:500">${esc(who)}<div style="color:var(--faint);font-size:12px">${sub?esc(sub)+' · ':''}${(+x.heures||0)} h × ${eur(x.taux_horaire)} · ${fdate(x.date_h)}</div></div><div class="t">${eur((+x.heures||0)*(+x.taux_horaire||0))}<button class="btn ghost sm" style="margin-left:10px" onclick="delHeure('${x.id}')">✕</button></div><div></div></div>`;
+  }).join(''):`<div class="empty" style="padding:20px"><b>Aucune heure saisie</b></div>`;
+  const byMet={}; hrs.forEach(x=>{ const k=x.metier||'Autre'; const c=(+x.heures||0)*(+x.taux_horaire||0); (byMet[k]=byMet[k]||{h:0,c:0}); byMet[k].h+=(+x.heures||0); byMet[k].c+=c; });
+  const metierBreak=Object.keys(byMet).length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 2px">${Object.entries(byMet).map(([k,v])=>`<span class="evtag" style="background:var(--bg-2);color:var(--muted)">${esc(k)} : ${v.h} h · ${eur(v.c)}</span>`).join('')}</div>`:'';
   const gallery=phs.length?`<div class="photo-grid">${phs.map(p=>`<div class="photo-cell"><a href="${esc(p.url)}" target="_blank"><img src="${esc(p.url)}"></a><button class="photo-del" onclick="delPhoto('${p.id}')">✕</button></div>`).join('')}</div>`:`<div class="empty" style="padding:20px"><b>Aucune photo</b>Ajoutez des photos avant/après.</div>`;
   $('#view').innerHTML=`
     <div class="sec-head"><h2>Chantier — ${esc(d.numero)}</h2><button class="btn ghost" onclick="go('chantiers')">← Retour</button></div>
@@ -1124,10 +1169,15 @@ function viewDepenses(){
       <div class="card" style="margin-top:12px">${matRows}</div>
     </div>
     <div class="panel">
-      <h3>Main d'œuvre (heures)</h3>
-      <div class="grid2"><label class="fld"><span>Description</span><input class="inp" id="hr-desc" placeholder="Ex : pose carrelage"></label><label class="fld"><span>Date</span><input class="inp" id="hr-date" type="date" value="${today()}"></label></div>
+      <h3>Main d'œuvre (journal : qui fait quoi)</h3>
+      <div class="grid2">
+        <label class="fld"><span>Ouvrier</span><select class="inp" id="hr-ouv" onchange="hrPickOuvrier()"><option value="">— Sans ouvrier —</option>${(S.ouvriers||[]).map(o=>`<option value="${o.id}" data-taux="${o.taux_horaire||0}" data-metier="${esc(o.metier||'')}">${esc(o.nom)}${o.metier?' ('+esc(o.metier)+')':''}</option>`).join('')}</select></label>
+        <label class="fld"><span>Métier / tâche</span><select class="inp" id="hr-metier">${METIERS.map(m=>`<option>${m}</option>`).join('')}</select></label>
+      </div>
+      <div class="grid2"><label class="fld"><span>Détail (optionnel)</span><input class="inp" id="hr-desc" placeholder="Ex : démolition mur cuisine"></label><label class="fld"><span>Date</span><input class="inp" id="hr-date" type="date" value="${today()}"></label></div>
       <div class="grid2"><label class="fld"><span>Heures</span><input class="inp" id="hr-h" type="number" step="0.5" placeholder="0"></label><label class="fld"><span>Taux horaire (€)</span><input class="inp" id="hr-t" type="number" step="0.5" placeholder="Ex : 35" value="${S.company.taux_horaire||''}"></label></div>
-      <div class="editor-actions"><button class="btn" id="hr-add" onclick="addHeure()">Ajouter</button></div>
+      <div class="editor-actions"><button class="btn" id="hr-add" onclick="addHeure()">Ajouter au journal</button></div>
+      ${metierBreak}
       <div class="card" style="margin-top:12px">${hrRows}</div>
     </div>
     <div class="panel">
@@ -1139,11 +1189,12 @@ function viewDepenses(){
 }
 window.setAvancement=async(id,val)=>{ try{ await db('devis',{method:'PATCH',query:`?id=eq.${id}`,body:{avancement:+val}}); const d=S.devis.find(x=>x.id===id); if(d)d.avancement=+val; }catch(e){} };
 window.addHeure=async()=>{
+  const ouvrier_id=$('#hr-ouv')?.value||null, metier=$('#hr-metier')?.value||null;
   const desc=$('#hr-desc').value.trim(), dt=$('#hr-date').value||today(), h=parseFloat($('#hr-h').value)||0, t=parseFloat($('#hr-t').value)||0;
   if(!h){ $('#dp-msg').innerHTML='<div class="msg err">Indiquez les heures.</div>'; return; }
   const btn=$('#hr-add'); btn.disabled=true; btn.textContent='…';
-  try{ const r=await db('heures',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:_depDevis,description:desc||null,date_h:dt,heures:h,taux_horaire:t}}); S.heures.unshift(r[0]); viewDepenses(); }
-  catch(e){ $('#dp-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter'; }
+  try{ const r=await db('heures',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:_depDevis,ouvrier_id:ouvrier_id||null,metier:metier||null,description:desc||null,date_h:dt,heures:h,taux_horaire:t}}); S.heures.unshift(r[0]); viewDepenses(); }
+  catch(e){ $('#dp-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter au journal'; }
 };
 window.delHeure=async(id)=>{ try{ await db('heures',{method:'DELETE',query:`?id=eq.${id}`}); S.heures=S.heures.filter(x=>x.id!==id); viewDepenses(); }catch(e){} };
 window.addPhoto=async()=>{
