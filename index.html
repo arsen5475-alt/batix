@@ -1029,14 +1029,10 @@ function viewCompta(){
   const net=recettes-cotis-depTot-moTot;
   const mca=monthlyEncaisse(); const maxV=Math.max(1,...mca.map(x=>x.val));
   const chartBars=mca.map(x=>`<div class="bar"><div class="val">${x.val?new Intl.NumberFormat('fr-FR').format(Math.round(x.val)):''}</div><div class="b" style="height:${x.val?Math.max(3,Math.round(x.val/maxV*100)):0}%"></div><div class="lab">${x.label}</div></div>`).join('');
-  const lignes=paid.length?paid.map(f=>`
-    <div class="row">
-      <div class="n">${esc(f.numero)}</div>
-      <div class="c">${esc(f.clients?.nom||'—')}</div>
-      <div class="d" style="color:var(--faint)">${fdate(f.date_facture)}</div>
-      <div></div>
-      <div class="t">${eur(f.total)}</div>
-    </div>`).join(''):`<div class="empty"><b>Aucune recette encaissée</b>Marquez une facture « Payée » pour la voir ici.</div>`;
+  const lignes=paid.length?paid.map(f=>{
+    const hue=clientHue(f.clients?.nom||f.numero||'');
+    return `<div class="ch-row"><div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},55%,52%),hsl(${(hue+40)%360},50%,42%))">${esc(clientInitials(f.clients?.nom||f.numero))}</div><div><div class="nm">${esc(f.numero)}</div><div class="mt">${esc(f.clients?.nom||'—')} · ${fdate(f.date_facture)}</div></div></div><div class="amt" style="color:var(--ok)">${eur(f.total)}</div><div></div></div>`;
+  }).join(''):`<div class="empty"><b>Aucune recette encaissée</b>Marquez une facture « Payée » pour la voir ici.</div>`;
   $('#view').innerHTML=`
     <div class="sec-head"><h2>Comptabilité</h2><button class="btn ghost sm" onclick="exportCompta()">⬇ Export comptable (CSV)</button></div>
     <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
@@ -1046,32 +1042,45 @@ function viewCompta(){
       <div class="stat"><div class="k">Impayés</div><div class="v num">${eur(impayes)}</div><div class="sub">à encaisser</div></div>
       <div class="stat"><div class="k">Cotisations à prévoir</div><div class="v num">${eur(cotis)}</div><div class="sub">≈ ${taux}% des recettes</div></div>
     </div>
-    <div class="panel" style="margin-top:2px">
+    <div class="panel" style="margin-top:2px;background:linear-gradient(150deg,#1b2749,#111a34)">
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center">
-        <div><div style="color:var(--muted);font-size:13px">Net estimé (recettes − dépenses − main d'œuvre − cotisations)</div><div class="num" style="font-family:'Space Grotesk';font-size:24px;font-weight:700;margin-top:4px;color:${net>=0?'var(--ok)':'var(--bad)'}">${eur(net)}</div></div>
+        <div><div style="color:var(--muted);font-size:13px">Net estimé (recettes − dépenses − main d'œuvre − cotisations)</div><div class="num" style="font-family:'Space Grotesk';font-size:28px;font-weight:700;margin-top:4px;color:${net>=0?'var(--ok)':'var(--bad)'}">${eur(net)}</div></div>
         <div style="color:var(--faint);font-size:12px;max-width:44ch">Estimation indicative. Ajustez votre taux dans « Mon entreprise » (vérifiable sur autoentrepreneur.urssaf.fr).</div>
       </div>
     </div>
     <div class="sec-head"><h2>Chiffre d'affaires encaissé</h2><span class="muted">6 derniers mois</span></div>
     <div class="panel"><div class="chart">${chartBars}</div></div>
-    <div class="sec-head"><h2>Livre des recettes</h2></div>
-    <div class="card">
-      ${paid.length?`<div class="list-head"><div>Facture</div><div class="c">Client</div><div class="d">Date</div><div></div><div class="t">Encaissé</div></div>`:''}
-      ${lignes}
+    <div class="panel ch-panel">
+      <h3><span class="ci">💰</span> Livre des recettes</h3>
+      <div style="margin-top:6px">${lignes}</div>
     </div>
-    <div class="sec-head"><h2>Dépenses</h2><span class="muted">${S.depenses.length} ligne(s)</span></div>
-    <div class="card">
-      ${S.depenses.length? S.depenses.map(x=>{
-        const dv=x.devis_id?S.devis.find(d=>d.id===x.devis_id):null;
-        const link=dv?`${esc(dv.numero)} — ${esc(dv.clients?.nom||'')}`:'<span style="color:var(--warn)">Sans chantier</span>';
-        const opts=S.devis.map(d=>`<option value="${d.id}" ${x.devis_id===d.id?'selected':''}>${esc(d.numero)} — ${esc(d.clients?.nom||'')}</option>`).join('');
-        return `<div class="row" style="grid-template-columns:1.5fr 1fr auto auto">
-          <div class="n" style="font-family:inherit;font-weight:500">${esc(x.libelle)}<div style="color:var(--faint);font-size:12px">${link} · ${fdate(x.date_depense)}</div></div>
-          <div><select class="inp" style="padding:7px 10px;font-size:12px" onchange="reassignDepense('${x.id}',this.value)"><option value="">↪ Rattacher à…</option>${opts}</select></div>
-          <div class="t">${eur(x.montant)}</div>
-          <div><button class="btn ghost sm" onclick="delDepenseC('${x.id}')">✕</button></div>
-        </div>`;}).join('')
-      : '<div class="empty"><b>Aucune dépense</b>Ajoutez des matériaux depuis un chantier.</div>'}
+    <div class="panel ch-panel">
+      <h3><span class="ci">🧾</span> Dépenses par chantier <span class="muted" style="font-weight:400;font-size:13px">· ${S.depenses.length} ligne(s)</span></h3>
+      <div style="margin-top:8px;display:grid;gap:12px">${(()=>{
+        if(!S.depenses.length) return '<div class="empty"><b>Aucune dépense</b>Ajoutez des matériaux depuis un chantier.</div>';
+        const groups={};
+        S.depenses.forEach(x=>{ const k=x.devis_id||'none'; (groups[k]=groups[k]||[]).push(x); });
+        const optsAll=S.devis.map(d=>`<option value="${d.id}">${esc(d.numero)} — ${esc(d.clients?.nom||'')}</option>`).join('');
+        return Object.entries(groups).map(([k,list])=>{
+          const dv=k!=='none'?S.devis.find(d=>d.id===k):null;
+          const tot=list.reduce((s,x)=>s+(+x.montant||0),0);
+          const hue=clientHue(dv?dv.numero:'sans');
+          const title=dv?`${esc(dv.numero)} — ${esc(dv.clients?.nom||'')}`:'<span style="color:var(--warn)">Sans chantier</span>';
+          const rows=list.map(x=>`<div class="ch-row" style="grid-template-columns:1fr auto ${k==='none'?'auto ':''}auto">
+            <div><div class="nm">${esc(x.libelle)}</div><div class="mt">${fdate(x.date_depense)}</div></div>
+            <div class="amt">${eur(x.montant)}</div>
+            ${k==='none'?`<div><select class="inp" style="padding:7px 10px;font-size:12px" onchange="reassignDepense('${x.id}',this.value)"><option value="">↪ Rattacher…</option>${optsAll}</select></div>`:''}
+            <button class="x" onclick="delDepenseC('${x.id}')">✕</button>
+          </div>`).join('');
+          return `<div style="border:1px solid var(--line);border-radius:14px;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line)">
+              <div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},55%,52%),hsl(${(hue+40)%360},50%,42%))">${dv?esc((dv.numero||'').slice(-2)):'—'}</div><div><div class="nm">${title}</div><div class="mt">${list.length} ligne(s)</div></div></div>
+              <div class="amt" style="font-size:16px">${eur(tot)}</div>
+            </div>
+            <div style="padding:10px 12px">${rows}</div>
+          </div>`;
+        }).join('');
+      })()}</div>
     </div>`;
 }
 window.reassignDepense=async(id,devisId)=>{
