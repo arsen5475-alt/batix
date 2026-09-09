@@ -212,6 +212,20 @@ textarea.inp{resize:vertical;min-height:64px}
 .photo-cell{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
 .photo-cell img{width:100%;height:100%;object-fit:cover;display:block}
 .photo-del{position:absolute;top:5px;right:5px;background:rgba(0,0,0,.62);border:none;color:#fff;border-radius:8px;width:26px;height:26px;cursor:pointer;font-size:12px}
+.ch-panel h3{display:flex;align-items:center;gap:9px}
+.ch-panel h3 .ci{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--accent-dim);color:var(--accent-soft);font-size:14px;flex:none}
+.ch-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);margin-bottom:8px}
+.ch-row:hover{border-color:rgba(255,106,43,.3)}
+.ch-row .nm{font-weight:600}
+.ch-row .mt{color:var(--faint);font-size:12px;margin-top:2px}
+.ch-row .amt{font-family:'Space Grotesk';font-weight:700}
+.ch-row .x{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;width:30px;height:30px;cursor:pointer}
+.ch-row .x:hover{border-color:var(--bad);color:var(--bad)}
+.ch-av{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-family:'Space Grotesk';font-weight:700;font-size:13px;color:#fff;flex:none}
+.metier-chips{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 14px}
+.metier-chip{display:inline-flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12px}
+.metier-chip b{font-family:'Space Grotesk'}
+.metier-chip .dot{width:8px;height:8px;border-radius:50%}
 .leaflet-container{font-family:'Inter',sans-serif}
 
 /* ---------- agenda / calendar ---------- */
@@ -1138,15 +1152,15 @@ function viewDepenses(){
   const mo=hrs.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
   const totalH=hrs.reduce((s,x)=>s+(+x.heures||0),0);
   const total=+d.total||0; const marge=total-mat-mo; const av=+d.avancement||0;
-  const matRows=deps.length?deps.map(x=>`<div class="row" style="grid-template-columns:1.6fr auto auto"><div class="n" style="font-family:inherit;font-weight:500">${esc(x.libelle)}${x.justificatif_url?` <a href="${esc(x.justificatif_url)}" target="_blank" style="color:var(--accent-soft);font-size:12px;margin-left:6px">🧾</a>`:''}</div><div class="d" style="color:var(--faint)">${fdate(x.date_depense)}</div><div class="t">${eur(x.montant)}<button class="btn ghost sm" style="margin-left:10px" onclick="delDepense('${x.id}')">✕</button></div></div>`).join(''):`<div class="empty" style="padding:20px"><b>Aucun matériau</b></div>`;
+  const matRows=deps.length?deps.map(x=>`<div class="ch-row"><div><div class="nm">${esc(x.libelle)}${x.justificatif_url?` <a href="${esc(x.justificatif_url)}" target="_blank" style="color:var(--accent-soft);font-size:12px">🧾</a>`:''}</div><div class="mt">${fdate(x.date_depense)}</div></div><div class="amt">${eur(x.montant)}</div><button class="x" onclick="delDepense('${x.id}')">✕</button></div>`).join(''):`<div class="empty" style="padding:20px"><b>Aucun matériau</b></div>`;
   const hrRows=hrs.length?hrs.map(x=>{
     const ov=(S.ouvriers||[]).find(o=>o.id===x.ouvrier_id);
     const who=ov?ov.nom:(x.metier||"Main d'œuvre");
-    const sub=[x.metier,x.description].filter(Boolean).join(' · ');
-    return `<div class="row" style="grid-template-columns:1.6fr auto auto"><div class="n" style="font-family:inherit;font-weight:500">${esc(who)}<div style="color:var(--faint);font-size:12px">${sub?esc(sub)+' · ':''}${(+x.heures||0)} h × ${eur(x.taux_horaire)} · ${fdate(x.date_h)}</div></div><div class="t">${eur((+x.heures||0)*(+x.taux_horaire||0))}<button class="btn ghost sm" style="margin-left:10px" onclick="delHeure('${x.id}')">✕</button></div><div></div></div>`;
+    const hue=clientHue(who); const sub=[x.metier,x.description].filter(Boolean).join(' · ');
+    return `<div class="ch-row"><div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},60%,55%),hsl(${(hue+40)%360},58%,44%))">${esc(clientInitials(who))}</div><div><div class="nm">${esc(who)}</div><div class="mt">${sub?esc(sub)+' · ':''}${(+x.heures||0)} h × ${eur(x.taux_horaire)} · ${fdate(x.date_h)}</div></div></div><div class="amt">${eur((+x.heures||0)*(+x.taux_horaire||0))}</div><button class="x" onclick="delHeure('${x.id}')">✕</button></div>`;
   }).join(''):`<div class="empty" style="padding:20px"><b>Aucune heure saisie</b></div>`;
   const byMet={}; hrs.forEach(x=>{ const k=x.metier||'Autre'; const c=(+x.heures||0)*(+x.taux_horaire||0); (byMet[k]=byMet[k]||{h:0,c:0}); byMet[k].h+=(+x.heures||0); byMet[k].c+=c; });
-  const metierBreak=Object.keys(byMet).length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 2px">${Object.entries(byMet).map(([k,v])=>`<span class="evtag" style="background:var(--bg-2);color:var(--muted)">${esc(k)} : ${v.h} h · ${eur(v.c)}</span>`).join('')}</div>`:'';
+  const metierBreak=Object.keys(byMet).length?`<div class="metier-chips">${Object.entries(byMet).map(([k,v])=>`<span class="metier-chip"><span class="dot" style="background:hsl(${clientHue(k)},60%,55%)"></span><b>${esc(k)}</b> · ${v.h} h · ${eur(v.c)}</span>`).join('')}</div>`:'';
   const gallery=phs.length?`<div class="photo-grid">${phs.map(p=>`<div class="photo-cell"><a href="${esc(p.url)}" target="_blank"><img src="${esc(p.url)}"></a><button class="photo-del" onclick="delPhoto('${p.id}')">✕</button></div>`).join('')}</div>`:`<div class="empty" style="padding:20px"><b>Aucune photo</b>Ajoutez des photos avant/après.</div>`;
   $('#view').innerHTML=`
     <div class="sec-head"><h2>Chantier — ${esc(d.numero)}</h2><button class="btn ghost" onclick="go('chantiers')">← Retour</button></div>
@@ -1161,15 +1175,15 @@ function viewDepenses(){
       <input type="range" min="0" max="100" step="5" value="${av}" style="width:100%" oninput="document.getElementById('av-val').textContent=this.value+'%'" onchange="setAvancement('${d.id}',this.value)">
       <div style="height:8px;background:var(--bg-2);border-radius:20px;overflow:hidden;margin-top:8px"><div style="height:100%;width:${av}%;background:linear-gradient(90deg,var(--accent-soft),var(--accent))"></div></div></div>
     <div id="dp-msg"></div>
-    <div class="panel">
-      <h3>Matériaux / dépenses</h3>
+    <div class="panel ch-panel">
+      <h3><span class="ci">🧱</span> Matériaux / dépenses</h3>
       <div class="grid2"><label class="fld"><span>Libellé</span><input class="inp" id="dp-lib" placeholder="Ex : Peinture 15L"></label><label class="fld"><span>Montant</span><input class="inp" id="dp-m" type="number" step="0.01" placeholder="0"></label></div>
       <div class="grid2"><label class="fld"><span>Date</span><input class="inp" id="dp-date" type="date" value="${today()}"></label><label class="fld"><span>Photo du reçu (optionnel)</span><input class="inp" id="dp-file" type="file" accept="image/*" capture="environment"></label></div>
       <div class="editor-actions"><button class="btn" id="dp-add" onclick="addDepense()">Ajouter</button></div>
-      <div class="card" style="margin-top:12px">${matRows}</div>
+      <div style="margin-top:14px">${matRows}</div>
     </div>
-    <div class="panel">
-      <h3>Main d'œuvre (journal : qui fait quoi)</h3>
+    <div class="panel ch-panel">
+      <h3><span class="ci">👷</span> Main d'œuvre — journal (qui fait quoi)</h3>
       <div class="grid2">
         <label class="fld"><span>Ouvrier</span><select class="inp" id="hr-ouv" onchange="hrPickOuvrier()"><option value="">— Sans ouvrier —</option>${(S.ouvriers||[]).map(o=>`<option value="${o.id}" data-taux="${o.taux_horaire||0}" data-metier="${esc(o.metier||'')}">${esc(o.nom)}${o.metier?' ('+esc(o.metier)+')':''}</option>`).join('')}</select></label>
         <label class="fld"><span>Métier / tâche</span><select class="inp" id="hr-metier">${METIERS.map(m=>`<option>${m}</option>`).join('')}</select></label>
@@ -1177,11 +1191,10 @@ function viewDepenses(){
       <div class="grid2"><label class="fld"><span>Détail (optionnel)</span><input class="inp" id="hr-desc" placeholder="Ex : démolition mur cuisine"></label><label class="fld"><span>Date</span><input class="inp" id="hr-date" type="date" value="${today()}"></label></div>
       <div class="grid2"><label class="fld"><span>Heures</span><input class="inp" id="hr-h" type="number" step="0.5" placeholder="0"></label><label class="fld"><span>Taux horaire (€)</span><input class="inp" id="hr-t" type="number" step="0.5" placeholder="Ex : 35" value="${S.company.taux_horaire||''}"></label></div>
       <div class="editor-actions"><button class="btn" id="hr-add" onclick="addHeure()">Ajouter au journal</button></div>
-      ${metierBreak}
-      <div class="card" style="margin-top:12px">${hrRows}</div>
+      <div style="margin-top:14px">${metierBreak}${hrRows}</div>
     </div>
-    <div class="panel">
-      <h3>Photos du chantier</h3>
+    <div class="panel ch-panel">
+      <h3><span class="ci">📷</span> Photos du chantier</h3>
       <input class="inp" id="ph-file" type="file" accept="image/*" capture="environment" multiple>
       <div class="editor-actions"><button class="btn" id="ph-add" onclick="addPhoto()">Ajouter</button></div>
       <div style="margin-top:12px">${gallery}</div>
