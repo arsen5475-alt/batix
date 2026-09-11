@@ -488,6 +488,7 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
       <button data-view="clients">Clients</button>
       <button data-view="biblio">Bibliothèque</button>
       <button data-view="ouvriers">Brigade</button>
+      <button data-view="analyse">Analyse</button>
       <button data-view="carte">Carte</button>
       <button data-view="settings">Mon entreprise</button><button onclick="openProStudio()" class="pro-nav">⚡ Batix Pro</button>
     </div>
@@ -733,6 +734,7 @@ function go(v){
   if(v==='clients') viewClients();
   if(v==='biblio') viewBiblio();
   if(v==='ouvriers') viewOuvriers();
+  if(v==='analyse') viewAnalyse();
   if(v==='carte') viewCarte();
   if(v==='settings') viewSettings();
   if(v==='editor') viewEditor();
@@ -996,6 +998,7 @@ function viewAccueil(){
       <div class="tile" onclick="openAIDevis()" style="border-color:rgba(255,106,43,.5)"><div class="ic">${IC.ai}</div><div class="tt">Assistant IA</div><div class="ts">Devis depuis ton texte</div></div>
       <div class="tile" onclick="go('chantiers')"><div class="ic">${IC.chantier}</div><div class="tt">Chantiers</div><div class="ts">Matériaux, heures, marge</div></div>
       <div class="tile" onclick="go('ouvriers')"><div class="ic">${IC.brigade}</div><div class="tt">Brigade</div><div class="ts">Équipe & heures par métier</div></div>
+      <div class="tile" onclick="go('analyse')"><div class="ic">${IC.tresor}</div><div class="tt">Analyse</div><div class="ts">Coûts moyens & marges</div></div>
       <div class="tile" onclick="go('compta')"><div class="ic">${IC.compta}</div><div class="tt">Comptabilité</div><div class="ts">Recettes, impayés, cotisations</div></div>
       <div class="tile" onclick="go('tresorerie')"><div class="ic">${IC.tresor}</div><div class="tt">Trésorerie</div><div class="ts">Ce qui doit rentrer</div></div>
       <div class="tile" onclick="go('factures')"><div class="ic">${IC.fac}</div><div class="tt">Factures</div><div class="ts">Suivi des paiements</div></div>
@@ -1093,6 +1096,42 @@ window.delDepenseC=async(id)=>{
   try{ await db('depenses',{method:'DELETE',query:`?id=eq.${id}`}); S.depenses=S.depenses.filter(x=>x.id!==id); viewCompta(); }
   catch(e){ alert(e.message); }
 };
+
+function viewAnalyse(){
+  const hrs=S.heures||[];
+  const met={};
+  hrs.forEach(x=>{ const k=x.metier||'Autre'; const c=(+x.heures||0)*(+x.taux_horaire||0); (met[k]=met[k]||{h:0,c:0,n:0}); met[k].h+=(+x.heures||0); met[k].c+=c; met[k].n++; });
+  const metArr=Object.entries(met).sort((a,b)=>b[1].c-a[1].c);
+  const totH=metArr.reduce((s,[,v])=>s+v.h,0)||1;
+  const metRows=metArr.length?metArr.map(([k,v])=>{
+    const hue=clientHue(k); const pct=Math.round(v.h/totH*100);
+    return `<div class="ch-row" style="grid-template-columns:auto 1fr auto"><div class="ch-av" style="width:30px;height:30px;background:hsl(${hue},55%,50%)"></div><div><div class="nm">${esc(k)}</div><div class="mt">${v.h} h · ${v.n} saisie(s) · ${pct}% du temps</div><div style="height:6px;background:var(--bg-2);border-radius:20px;overflow:hidden;margin-top:6px;max-width:220px"><div style="height:100%;width:${pct}%;background:hsl(${hue},55%,50%)"></div></div></div><div class="amt">${eur(v.c)}</div></div>`;
+  }).join(''):`<div class="empty" style="padding:20px"><b>Pas encore de données</b>Saisis des heures dans les chantiers.</div>`;
+
+  const rows=S.devis.map(d=>{ const n=chantierNums(d); const pct=n.total?Math.round(n.marge/n.total*100):0; return {d,n,pct}; }).filter(r=>r.n.mat>0||r.n.mo>0).sort((a,b)=>b.pct-a.pct);
+  const chRows=rows.length?rows.map(r=>{
+    const hue=clientHue(r.d.numero||'');
+    return `<div class="ch-row" style="grid-template-columns:auto 1fr auto"><div class="ch-av" style="width:30px;height:30px;background:linear-gradient(135deg,hsl(${hue},55%,52%),hsl(${(hue+40)%360},50%,42%))">${esc((r.d.numero||'').slice(-2))}</div><div><div class="nm">${esc(r.d.clients?.nom||'—')} · ${esc(r.d.numero)}</div><div class="mt">Devis ${eur(r.n.total)} · Mat ${eur(r.n.mat)} · MO ${eur(r.n.mo)}</div></div><div class="amt" style="color:${r.n.marge>=0?'var(--ok)':'var(--bad)'}">${eur(r.n.marge)} <span style="font-size:12px;color:var(--muted)">(${r.pct}%)</span></div></div>`;
+  }).join(''):`<div class="empty" style="padding:20px"><b>Pas encore de chantiers chiffrés</b></div>`;
+
+  const totMat=S.depenses.reduce((s,x)=>s+(+x.montant||0),0);
+  const totMO=hrs.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const totDevis=rows.reduce((s,r)=>s+r.n.total,0)||1;
+  const margeMoy=rows.length?Math.round(rows.reduce((s,r)=>s+r.pct,0)/rows.length):0;
+
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Analyse</h2><span class="muted">apprentissage des coûts</span></div>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <div class="stat"><div class="k">Marge moyenne</div><div class="v num accent">${margeMoy}%</div><div class="sub">sur ${rows.length} chantier(s)</div></div>
+      <div class="stat"><div class="k">Part matériaux</div><div class="v num">${Math.round(totMat/totDevis*100)}%</div><div class="sub">du CA chiffré</div></div>
+      <div class="stat"><div class="k">Part main d'œuvre</div><div class="v num">${Math.round(totMO/totDevis*100)}%</div><div class="sub">du CA chiffré</div></div>
+      <div class="stat"><div class="k">Heures totales</div><div class="v num">${Math.round(totH)} h</div><div class="sub">toute la brigade</div></div>
+    </div>
+    <div class="panel ch-panel"><h3><span class="ci">👷</span> Temps &amp; coût par métier</h3><div style="margin-top:8px">${metRows}</div></div>
+    <div class="panel ch-panel"><h3><span class="ci">📊</span> Marge réelle par chantier</h3><div style="margin-top:8px">${chRows}</div>
+      <div style="font-size:11.5px;color:var(--faint);margin-top:10px">Ces moyennes t'aident à estimer un nouveau chantier similaire : compare matériaux et main d'œuvre à ton devis.</div>
+    </div>`;
+}
 
 function viewOuvriers(){
   const cards=S.ouvriers.length?S.ouvriers.map(o=>{
