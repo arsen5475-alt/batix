@@ -531,7 +531,7 @@ const SUPABASE_KEY = 'sb_publishable_SCBPyFQ7ktB9Znho8MM6kg_w-cphtSI';
 
 const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], photos:[], heures:[], ouvriers:[], mode:'signup' };
 const TYPEL={ouvrage:'Ouvrage',materiel:'Matériel',fourniture:'Fourniture'};
-const METIERS=['Peintre','Électricien','Plombier','Carreleur','Parquettiste','Manœuvre'];
+const METIERS=['Peintre','Plaquiste','Enduiseur','Électricien','Plombier','Carreleur','Parquettiste','Manœuvre'];
 const $ = s=>document.querySelector(s);
 const eur = n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(+n||0);
 const esc = s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
