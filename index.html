@@ -812,7 +812,7 @@ window.editDevis=(id)=>{
 };
 window.duplicateDevis=async(id)=>{
   const d=S.devis.find(x=>x.id===id); if(!d)return;
-  ED={numero:`DEV-${new Date().getFullYear()}-${String(S.devis.length+1).padStart(3,'0')}`,date:today(),client_id:d.client_id||'',newClient:'',newAddr:'',mat:d.materiel_fourni_par||'entreprise',notes:d.notes||'',descChantier:d.description_chantier||'',acompte:d.acompte_pct||'',duree:d.duree_estimee||'',tva:d.tva_rate||0,lignes:(d.devis_lignes||[]).map(l=>({categorie:l.categorie||'',description:l.description||'',quantite:l.quantite??'',unite:l.unite||'forfait',prix_unitaire:l.prix_unitaire??'',montant:l.montant??''}))};
+  ED={numero:nextNum('DEV',S.devis),date:today(),client_id:d.client_id||'',newClient:'',newAddr:'',mat:d.materiel_fourni_par||'entreprise',notes:d.notes||'',descChantier:d.description_chantier||'',acompte:d.acompte_pct||'',duree:d.duree_estimee||'',tva:d.tva_rate||0,lignes:(d.devis_lignes||[]).map(l=>({categorie:l.categorie||'',description:l.description||'',quantite:l.quantite??'',unite:l.unite||'forfait',prix_unitaire:l.prix_unitaire??'',montant:l.montant??''}))};
   go('editor');
 };
 window.setStatut = async (id,st)=>{
@@ -832,9 +832,7 @@ window.delDevis = async (id)=>{
 /* ---- EDITOR ---- */
 let ED=null;
 window.newDevis = ()=>{
-  const y=new Date().getFullYear();
-  const seq=String(S.devis.length+1).padStart(3,'0');
-  ED={ numero:`DEV-${y}-${seq}`, date:today(), client_id:'', newClient:'', newAddr:'', mat:'entreprise', notes:'',
+  ED={ numero:nextNum('DEV',S.devis), date:today(), client_id:'', newClient:'', newAddr:'', mat:'entreprise', notes:'',
        descChantier:'', acompte:'', duree:'', tva:(S.company&&S.company.tva_applicable?20:0),
        lignes:[{categorie:'',description:'',quantite:'',unite:'m²',prix_unitaire:'',montant:''}] };
   go('editor');
@@ -959,7 +957,9 @@ async function saveDevis(){
       await db('devis_lignes',{method:'DELETE',query:`?devis_id=eq.${ED.id}`});
     } else {
       body.company_id=S.company.id; body.statut='brouillon';
-      const dv=await db('devis',{method:'POST',prefer:'return=representation',body});
+      let dv;
+      try{ dv=await db('devis',{method:'POST',prefer:'return=representation',body}); }
+      catch(err){ if(String(err.message||'').includes('duplicate')){ await loadData(); body.numero=nextNum('DEV',S.devis); dv=await db('devis',{method:'POST',prefer:'return=representation',body}); } else throw err; }
       did=dv[0].id;
     }
     await db('devis_lignes',{method:'POST',prefer:'return=representation',body:
@@ -1283,6 +1283,12 @@ window.delDepense=async(id)=>{
 };
 
 /* ---- FACTURES ---- */
+function nextNum(prefix, list){
+  const y=new Date().getFullYear();
+  let max=0;
+  (list||[]).forEach(o=>{ const m=(o.numero||'').match(/-(\d+)$/); if(m){ const n=+m[1]; if(n>max) max=n; } });
+  return `${prefix}-${y}-${String(max+1).padStart(3,'0')}`;
+}
 function factureRestant(devisId){
   const d=S.devis.find(x=>x.id===devisId); const tot=+((d&&d.total)||0);
   const dejafac=S.factures.filter(f=>f.devis_id===devisId).reduce((s,f)=>s+(+f.total||0),0);
@@ -1328,9 +1334,10 @@ window.doFactureCustom=(devisId,restant)=>{
 };
 window.doFacture=async(devisId,montant,type)=>{
   const d=S.devis.find(x=>x.id===devisId); if(!d)return;
-  const y=new Date().getFullYear(); const seq=String(S.factures.length+1).padStart(3,'0');
+  const body={company_id:S.company.id,numero:nextNum('FAC',S.factures),devis_id:devisId,client_id:d.client_id,date_facture:today(),statut:'creee',total:Math.round(montant*100)/100,montant_paye:0,type:type||'normale'};
   try{
-    await db('factures',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,numero:`FAC-${y}-${seq}`,devis_id:devisId,client_id:d.client_id,date_facture:today(),statut:'creee',total:Math.round(montant*100)/100,montant_paye:0,type:type||'normale'}});
+    try{ await db('factures',{method:'POST',prefer:'return=representation',body}); }
+    catch(err){ if(String(err.message||'').includes('duplicate')){ await loadData(); body.numero=nextNum('FAC',S.factures); await db('factures',{method:'POST',prefer:'return=representation',body}); } else throw err; }
     closeFModal(); await loadData(); go('factures');
   }catch(e){ alert(e.message); }
 };
@@ -1950,9 +1957,7 @@ async function generateAIDevis(){
   }catch(e){ prev.innerHTML=`<div class="msg err">Erreur : ${esc(String(e))}. Vérifie la fonction ai-devis et le secret ANTHROPIC_API_KEY.</div>`; }
 }
 function applyAILines(lines){
-  const y=new Date().getFullYear();
-  const seq=String(S.devis.length+1).padStart(3,'0');
-  ED={ numero:`DEV-${y}-${seq}`, date:today(), client_id:'', newClient:'', newAddr:'', mat:'entreprise', notes:'',
+  ED={ numero:nextNum('DEV',S.devis), date:today(), client_id:'', newClient:'', newAddr:'', mat:'entreprise', notes:'',
        descChantier:'', acompte:'', duree:'',
        lignes:(lines||[]).map(x=>({categorie:x.categorie||'',description:x.description||'',quantite:x.quantite??'',unite:x.unite||'forfait',prix_unitaire:x.prix_unitaire??'',montant:x.montant??''})) };
   closeProStudio(); go('editor');
