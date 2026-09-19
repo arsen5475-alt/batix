@@ -1137,15 +1137,47 @@ function viewOuvriers(){
   const cards=S.ouvriers.length?S.ouvriers.map(o=>{
     const h=clientHue(o.nom||''); const hh=(S.heures||[]).filter(x=>x.ouvrier_id===o.id);
     const th=hh.reduce((s,x)=>s+(+x.heures||0),0); const co=hh.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
-    return `<div class="cl-card2">
+    return `<div class="cl-card2" style="cursor:pointer" onclick="ouvrierFiche('${o.id}')">
       <div class="cl-top"><div class="cl-ava" style="background:linear-gradient(135deg,hsl(${h},60%,55%),hsl(${(h+40)%360},58%,44%))">${esc(clientInitials(o.nom))}</div>
         <div style="flex:1;min-width:0"><div class="cl-name">${esc(o.nom)}</div><span class="muted" style="font-size:12px">${esc(o.metier||'')}</span></div></div>
       <div class="cl-stats"><div><b>${eur(o.taux_horaire)}</b><span>€ / heure</span></div><div><b>${th}</b><span>heures</span></div><div><b>${eur(co)}</b><span>coût total</span></div></div>
-      <div class="cl-actions"><button class="btn ghost sm" onclick="editOuvrier('${o.id}')">Modifier</button><button class="btn ghost sm" onclick="delOuvrier('${o.id}')">Suppr.</button></div>
+      <div class="cl-actions"><button class="btn sm" onclick="event.stopPropagation();ouvrierFiche('${o.id}')">Fiche paie</button><button class="btn ghost sm" onclick="event.stopPropagation();editOuvrier('${o.id}')">Modifier</button><button class="btn ghost sm" onclick="event.stopPropagation();delOuvrier('${o.id}')">Suppr.</button></div>
     </div>`;
   }).join(''):`<div class="empty" style="grid-column:1/-1"><b>Aucun ouvrier</b>Ajoute ton équipe pour suivre qui fait quoi sur chaque chantier.</div>`;
   $('#view').innerHTML=`<div class="sec-head"><h2>Brigade</h2><button class="btn" onclick="editOuvrier()">+ Ouvrier</button></div><div class="clients-grid">${cards}</div>`;
 }
+window.ouvrierFiche=(id)=>{
+  const o=S.ouvriers.find(x=>x.id===id); if(!o){ go('ouvriers'); return; }
+  const hrs=(S.heures||[]).filter(x=>x.ouvrier_id===id);
+  const totH=hrs.reduce((s,x)=>s+(+x.heures||0),0);
+  const totC=hrs.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const groups={};
+  hrs.forEach(x=>{ const k=x.devis_id||'none'; (groups[k]=groups[k]||[]).push(x); });
+  const blocks=Object.keys(groups).length?Object.entries(groups).map(([k,list])=>{
+    const dv=k!=='none'?S.devis.find(d=>d.id===k):null;
+    const gH=list.reduce((s,x)=>s+(+x.heures||0),0);
+    const gC=list.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+    const hue=clientHue(dv?dv.numero:'sans');
+    const title=dv?`${esc(dv.numero)} — ${esc(dv.clients?.nom||'')}`:'Sans chantier';
+    const rows=list.slice().sort((a,b)=>(b.date_h||'').localeCompare(a.date_h||'')).map(x=>`<div class="ch-row" style="grid-template-columns:1fr auto auto"><div><div class="nm">${fdate(x.date_h)}</div><div class="mt">${x.metier?esc(x.metier)+' · ':''}${x.description?esc(x.description)+' · ':''}${(+x.heures||0)} h × ${eur(x.taux_horaire)}</div></div><div class="amt">${eur((+x.heures||0)*(+x.taux_horaire||0))}</div><div></div></div>`).join('');
+    return `<div style="border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line)">
+        <div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},55%,52%),hsl(${(hue+40)%360},50%,42%))">${dv?esc((dv.numero||'').slice(-2)):'—'}</div><div><div class="nm">${title}</div><div class="mt">${gH} h</div></div></div>
+        <div class="amt" style="font-size:16px">${eur(gC)}</div>
+      </div>
+      <div style="padding:10px 12px">${rows}</div>
+    </div>`;
+  }).join(''):`<div class="empty" style="padding:20px"><b>Aucune heure pour cet ouvrier</b></div>`;
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Fiche paie — ${esc(o.nom)}</h2><button class="btn ghost" onclick="go('ouvriers')">← Retour</button></div>
+    <p style="color:var(--muted);font-size:13px;margin:-6px 0 16px">${esc(o.metier||'')} · ${eur(o.taux_horaire)}/h</p>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="stat"><div class="k">Total heures</div><div class="v num">${totH} h</div></div>
+      <div class="stat"><div class="k">Chantiers</div><div class="v num">${Object.keys(groups).length}</div></div>
+      <div class="stat"><div class="k">À payer</div><div class="v num accent">${eur(totC)}</div><div class="sub">toutes périodes</div></div>
+    </div>
+    <div class="panel ch-panel"><h3><span class="ci">🧾</span> Détail par chantier</h3><div style="margin-top:8px">${blocks}</div></div>`;
+};
 window.editOuvrier=(id)=>{
   const o=id?S.ouvriers.find(x=>x.id===id):{metier:'Peintre'};
   $('#view').innerHTML=`<div class="sec-head"><h2>${id?"Modifier l'ouvrier":'Nouvel ouvrier'}</h2><button class="btn ghost" onclick="go('ouvriers')">← Retour</button></div><div id="ov-msg"></div><div class="panel">
