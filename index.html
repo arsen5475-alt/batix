@@ -529,7 +529,7 @@ const SUPABASE_URL = 'https://llakesuqcugmdniaqdjr.supabase.co';
 const AI_FN = 'https://llakesuqcugmdniaqdjr.supabase.co/functions/v1/ai-devis';
 const SUPABASE_KEY = 'sb_publishable_SCBPyFQ7ktB9Znho8MM6kg_w-cphtSI';
 
-const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], photos:[], heures:[], ouvriers:[], mode:'signup' };
+const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], photos:[], heures:[], ouvriers:[], paies:[], mode:'signup' };
 const TYPEL={ouvrage:'Ouvrage',materiel:'Matériel',fourniture:'Fourniture'};
 const METIERS=['Peintre','Plaquiste','Enduiseur','Électricien','Plombier','Carreleur','Parquettiste','Manœuvre'];
 const $ = s=>document.querySelector(s);
@@ -751,6 +751,7 @@ async function loadData(){
   try{ S.photos = await db('chantier_photos',{query:`?select=*&company_id=eq.${S.company.id}&order=created_at.desc`}); }catch(e){ S.photos=[]; }
   try{ S.heures = await db('heures',{query:`?select=*&company_id=eq.${S.company.id}&order=date_h.desc`}); }catch(e){ S.heures=[]; }
   try{ S.ouvriers = await db('ouvriers',{query:`?select=*&company_id=eq.${S.company.id}&order=nom`}); }catch(e){ S.ouvriers=[]; }
+  try{ S.paies = await db('paies',{query:`?select=*&company_id=eq.${S.company.id}&order=date_paie.desc`}); }catch(e){ S.paies=[]; }
 }
 
 /* ---- DASHBOARD ---- */
@@ -1137,9 +1138,12 @@ function viewOuvriers(){
   const cards=S.ouvriers.length?S.ouvriers.map(o=>{
     const h=clientHue(o.nom||''); const hh=(S.heures||[]).filter(x=>x.ouvrier_id===o.id);
     const th=hh.reduce((s,x)=>s+(+x.heures||0),0); const co=hh.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+    const paye=(S.paies||[]).filter(p=>p.ouvrier_id===o.id).reduce((s,p)=>s+(+p.montant||0),0);
+    const reste=Math.round((co-paye)*100)/100;
     return `<div class="cl-card2" style="cursor:pointer" onclick="ouvrierFiche('${o.id}')">
       <div class="cl-top"><div class="cl-ava" style="background:linear-gradient(135deg,hsl(${h},60%,55%),hsl(${(h+40)%360},58%,44%))">${esc(clientInitials(o.nom))}</div>
-        <div style="flex:1;min-width:0"><div class="cl-name">${esc(o.nom)}</div><span class="muted" style="font-size:12px">${esc(o.metier||'')}</span></div></div>
+        <div style="flex:1;min-width:0"><div class="cl-name">${esc(o.nom)}</div><span class="muted" style="font-size:12px">${esc(o.metier||'')}</span></div>
+        <span class="cl-badge ${reste>0.5?'bad':'ok'}">${reste>0.5?eur(reste)+' dû':'À jour'}</span></div>
       <div class="cl-stats"><div><b>${eur(o.taux_horaire)}</b><span>€ / heure</span></div><div><b>${th}</b><span>heures</span></div><div><b>${eur(co)}</b><span>coût total</span></div></div>
       <div class="cl-actions"><button class="btn sm" onclick="event.stopPropagation();ouvrierFiche('${o.id}')">Fiche paie</button><button class="btn ghost sm" onclick="event.stopPropagation();editOuvrier('${o.id}')">Modifier</button><button class="btn ghost sm" onclick="event.stopPropagation();delOuvrier('${o.id}')">Suppr.</button></div>
     </div>`;
@@ -1168,16 +1172,36 @@ window.ouvrierFiche=(id)=>{
       <div style="padding:10px 12px">${rows}</div>
     </div>`;
   }).join(''):`<div class="empty" style="padding:20px"><b>Aucune heure pour cet ouvrier</b></div>`;
+  const paies=(S.paies||[]).filter(p=>p.ouvrier_id===id).slice().sort((a,b)=>(b.date_paie||'').localeCompare(a.date_paie||''));
+  const paye=paies.reduce((s,p)=>s+(+p.montant||0),0);
+  const reste=Math.round((totC-paye)*100)/100;
+  const paieRows=paies.length?paies.map(p=>`<div class="ch-row" style="grid-template-columns:1fr auto auto"><div><div class="nm">${eur(p.montant)}</div><div class="mt">${fdate(p.date_paie)}${p.note?' · '+esc(p.note):''}</div></div><div></div><button class="x" onclick="delPaie('${p.id}')">✕</button></div>`).join(''):`<div class="empty" style="padding:16px"><b>Aucun paiement</b></div>`;
   $('#view').innerHTML=`
     <div class="sec-head"><h2>Fiche paie — ${esc(o.nom)}</h2><button class="btn ghost" onclick="go('ouvriers')">← Retour</button></div>
-    <p style="color:var(--muted);font-size:13px;margin:-6px 0 16px">${esc(o.metier||'')} · ${eur(o.taux_horaire)}/h</p>
+    <p style="color:var(--muted);font-size:13px;margin:-6px 0 16px">${esc(o.metier||'')} · ${eur(o.taux_horaire)}/h · ${totH} h · ${Object.keys(groups).length} chantier(s)</p>
     <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-      <div class="stat"><div class="k">Total heures</div><div class="v num">${totH} h</div></div>
-      <div class="stat"><div class="k">Chantiers</div><div class="v num">${Object.keys(groups).length}</div></div>
-      <div class="stat"><div class="k">À payer</div><div class="v num accent">${eur(totC)}</div><div class="sub">toutes périodes</div></div>
+      <div class="stat"><div class="k">Gagné (total)</div><div class="v num">${eur(totC)}</div></div>
+      <div class="stat"><div class="k">Déjà payé</div><div class="v num" style="color:var(--ok)">${eur(paye)}</div><div class="sub">${paies.length} versement(s)</div></div>
+      <div class="stat"><div class="k">Reste à payer</div><div class="v num" style="color:${reste>0.5?'var(--accent-soft)':'var(--ok)'}">${eur(reste>0?reste:0)}</div><div class="sub">${reste<=0.5?'à jour ✓':'à régler'}</div></div>
     </div>
-    <div class="panel ch-panel"><h3><span class="ci">🧾</span> Détail par chantier</h3><div style="margin-top:8px">${blocks}</div></div>`;
+    <div id="pm-msg"></div>
+    <div class="panel ch-panel"><h3><span class="ci">💸</span> Enregistrer un paiement</h3>
+      <div class="grid2"><label class="fld"><span>Montant (€)</span><input class="inp" id="pm-mt" type="number" step="0.01" placeholder="${reste>0?reste:0}"></label><label class="fld"><span>Date</span><input class="inp" id="pm-date" type="date" value="${today()}"></label></div>
+      <label class="fld"><span>Note (optionnel)</span><input class="inp" id="pm-note" placeholder="Ex : espèces, virement, semaine 39"></label>
+      <div class="editor-actions"><button class="btn ghost" onclick="payerReste('${id}',${reste>0?reste:0})">Payer le reste (${eur(reste>0?reste:0)})</button><button class="btn" id="pm-add" onclick="addPaie('${id}')">Enregistrer</button></div>
+      <div style="margin-top:14px">${paieRows}</div>
+    </div>
+    <div class="panel ch-panel"><h3><span class="ci">🧾</span> Détail des heures par chantier</h3><div style="margin-top:8px">${blocks}</div></div>`;
 };
+window.addPaie=async(ouvrierId)=>{
+  const mt=parseFloat($('#pm-mt').value)||0, dt=$('#pm-date').value||today(), note=$('#pm-note').value.trim()||null;
+  if(mt<=0){ $('#pm-msg').innerHTML='<div class="msg err">Indiquez un montant.</div>'; return; }
+  const btn=$('#pm-add'); btn.disabled=true; btn.textContent='…';
+  try{ const r=await db('paies',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,ouvrier_id:ouvrierId,montant:Math.round(mt*100)/100,date_paie:dt,note}}); S.paies.unshift(r[0]); ouvrierFiche(ouvrierId); }
+  catch(e){ $('#pm-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Enregistrer'; }
+};
+window.payerReste=(ouvrierId,reste)=>{ if(reste<=0){ alert('Rien à payer.'); return; } const el=$('#pm-mt'); if(el){ el.value=reste; } addPaie(ouvrierId); };
+window.delPaie=async(id)=>{ if(!confirm('Supprimer ce paiement ?'))return; const p=S.paies.find(x=>x.id===id); try{ await db('paies',{method:'DELETE',query:`?id=eq.${id}`}); S.paies=S.paies.filter(x=>x.id!==id); if(p) ouvrierFiche(p.ouvrier_id); }catch(e){alert(e.message);} };
 window.editOuvrier=(id)=>{
   const o=id?S.ouvriers.find(x=>x.id===id):{metier:'Peintre'};
   $('#view').innerHTML=`<div class="sec-head"><h2>${id?"Modifier l'ouvrier":'Nouvel ouvrier'}</h2><button class="btn ghost" onclick="go('ouvriers')">← Retour</button></div><div id="ov-msg"></div><div class="panel">
