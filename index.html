@@ -1856,12 +1856,49 @@ function viewBiblio(){
       </div>`).join('')+`</div>`
     : `<div class="card"><div class="empty"><b>${(_bq||_bfilter!=='tous')?'Aucun article':'Bibliothèque vide'}</b>Ajoutez vos ouvrages et matériaux avec leurs prix, réutilisables dans chaque devis.</div></div>`;
   $('#view').innerHTML=`
-    <div class="sec-head"><h2>Bibliothèque de prix</h2><button class="btn" onclick="editBiblio()">+ Nouvel article</button></div>
+    <div class="sec-head"><h2>Bibliothèque de prix</h2><div style="display:flex;gap:8px">${S.biblio.length?'':'<button class="btn ghost" onclick="importCatalogue()">⬇ Catalogue marché</button>'}<button class="btn" onclick="editBiblio()">+ Nouvel article</button></div></div>
     <div class="toolbar-pro"><input class="inp search" id="b-search" placeholder="Rechercher un article…" value="${esc(_bq)}"><div style="display:flex;gap:6px;flex-wrap:wrap">${tabs}</div></div>
     ${rows}`;
   const s=$('#b-search'); if(s) s.oninput=()=>{ const p=s.selectionStart; _bq=s.value; viewBiblio(); const n=$('#b-search'); n.focus(); n.setSelectionRange(p,p); };
 }
 window.setBFilter=(f)=>{ _bfilter=f; viewBiblio(); };
+const CATALOGUE_MARCHE=[
+  // [type, désignation, unité, prix vente indicatif, coût matériel indicatif, heures/unité]
+  ['ouvrage','Dépose papier peint','m²',9,1,0.2],
+  ['ouvrage','Rebouchage / enduit de lissage','m²',16,3,0.3],
+  ['ouvrage','Ponçage','m²',8,1,0.15],
+  ['ouvrage','Sous-couche (impression)','m²',6,2,0.1],
+  ['ouvrage','Peinture murs 2 couches','m²',30,6,0.3],
+  ['ouvrage','Peinture plafond 2 couches','m²',35,6,0.35],
+  ['ouvrage','Peinture boiseries / porte','u',65,10,1],
+  ['ouvrage','Peinture murs 2 couches (pose seule)','m²',18,0,0.3],
+  ['ouvrage','Peinture plafond (pose seule)','m²',22,0,0.35],
+  ['ouvrage','Cloison placo BA13 + ossature','m²',48,18,0.5],
+  ['ouvrage','Doublage isolé','m²',55,25,0.5],
+  ['ouvrage','Faux plafond placo','m²',55,20,0.6],
+  ['ouvrage','Bandes + joints (finition placo)','m²',12,2,0.25],
+  ['ouvrage','Pose placo (pose seule)','m²',25,0,0.5],
+  ['ouvrage','Pose carrelage sol','m²',55,25,0.6],
+  ['ouvrage','Pose faïence murale','m²',65,28,0.7],
+  ['ouvrage','Pose carrelage (pose seule)','m²',40,0,0.6],
+  ['ouvrage','Ragréage / chape','m²',30,10,0.3],
+  ['ouvrage','Pose parquet flottant','m²',35,18,0.3],
+  ['ouvrage','Pose parquet collé','m²',60,30,0.6],
+  ['ouvrage','Parquet (pose seule)','m²',25,0,0.3],
+  ['ouvrage','Sol PVC / lino','m²',35,15,0.3],
+  ['ouvrage','Plinthes','ml',12,4,0.15],
+  ['ouvrage','Protection + installation chantier','forfait',250,30,0],
+  ['ouvrage','Nettoyage fin de chantier + évacuation','forfait',300,20,0]
+];
+window.importCatalogue=async()=>{
+  if(!confirm('Importer le catalogue marché ('+CATALOGUE_MARCHE.length+' lignes) ?\nCe sont des prix indicatifs — tu pourras les modifier ensuite.')) return;
+  try{
+    const body=CATALOGUE_MARCHE.map(r=>({company_id:S.company.id,type:r[0],designation:r[1],unite:r[2],prix_unitaire:r[3],cout_materiel:r[4],heures_unite:r[5]}));
+    const r=await db('bibliotheque',{method:'POST',prefer:'return=representation',body});
+    if(Array.isArray(r)) r.forEach(x=>S.biblio.push(x));
+    viewBiblio();
+  }catch(e){ alert(e.message); }
+};
 window.editBiblio=(id)=>{
   const b=id?S.biblio.find(x=>x.id===id):{type:'ouvrage',unite:'m²'};
   $('#view').innerHTML=`
