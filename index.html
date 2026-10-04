@@ -1233,11 +1233,13 @@ function viewDepenses(){
   const totalH=hrs.reduce((s,x)=>s+(+x.heures||0),0);
   const total=+d.total||0; const marge=total-mat-mo; const av=+d.avancement||0;
   const matRows=deps.length?deps.map(x=>`<div class="ch-row"><div><div class="nm">${esc(x.libelle)}${x.justificatif_url?` <a href="${esc(x.justificatif_url)}" target="_blank" style="color:var(--accent-soft);font-size:12px">🧾</a>`:''}</div><div class="mt">${fdate(x.date_depense)}</div></div><div class="amt">${eur(x.montant)}</div><button class="x" onclick="delDepense('${x.id}')">✕</button></div>`).join(''):`<div class="empty" style="padding:20px"><b>Aucun matériau</b></div>`;
+  const ouvOpts=(S.ouvriers||[]).map(o=>`<option value="${o.id}">${esc(o.nom)}</option>`).join('');
   const hrRows=hrs.length?hrs.map(x=>{
     const ov=(S.ouvriers||[]).find(o=>o.id===x.ouvrier_id);
     const who=ov?ov.nom:(x.metier||"Main d'œuvre");
     const hue=clientHue(who); const sub=[x.metier,x.description].filter(Boolean).join(' · ');
-    return `<div class="ch-row"><div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},60%,55%),hsl(${(hue+40)%360},58%,44%))">${esc(clientInitials(who))}</div><div><div class="nm">${esc(who)}</div><div class="mt">${sub?esc(sub)+' · ':''}${(+x.heures||0)} h × ${eur(x.taux_horaire)} · ${fdate(x.date_h)}</div></div></div><div class="amt">${eur((+x.heures||0)*(+x.taux_horaire||0))}</div><button class="x" onclick="delHeure('${x.id}')">✕</button></div>`;
+    const assign=(!ov&&(S.ouvriers||[]).length)?`<select class="inp" style="padding:5px 8px;font-size:11px;max-width:150px" onchange="assignHeure('${x.id}',this.value)"><option value="">↪ Attribuer à…</option>${ouvOpts}</select>`:'';
+    return `<div class="ch-row" style="grid-template-columns:1fr auto auto auto"><div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},60%,55%),hsl(${(hue+40)%360},58%,44%))">${esc(clientInitials(who))}</div><div><div class="nm">${esc(who)}</div><div class="mt">${sub?esc(sub)+' · ':''}${(+x.heures||0)} h × ${eur(x.taux_horaire)} · ${fdate(x.date_h)}</div></div></div><div>${assign}</div><div class="amt">${eur((+x.heures||0)*(+x.taux_horaire||0))}</div><button class="x" onclick="delHeure('${x.id}')">✕</button></div>`;
   }).join(''):`<div class="empty" style="padding:20px"><b>Aucune heure saisie</b></div>`;
   const byMet={}; hrs.forEach(x=>{ const k=x.metier||'Autre'; const c=(+x.heures||0)*(+x.taux_horaire||0); (byMet[k]=byMet[k]||{h:0,c:0}); byMet[k].h+=(+x.heures||0); byMet[k].c+=c; });
   const metierBreak=Object.keys(byMet).length?`<div class="metier-chips">${Object.entries(byMet).map(([k,v])=>`<span class="metier-chip"><span class="dot" style="background:hsl(${clientHue(k)},60%,55%)"></span><b>${esc(k)}</b> · ${v.h} h · ${eur(v.c)}</span>`).join('')}</div>`:'';
@@ -1311,6 +1313,13 @@ window.addHeure=async()=>{
   catch(e){ $('#dp-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter au journal'; }
 };
 window.delHeure=async(id)=>{ try{ await db('heures',{method:'DELETE',query:`?id=eq.${id}`}); S.heures=S.heures.filter(x=>x.id!==id); viewDepenses(); }catch(e){} };
+window.assignHeure=async(id,ouvrierId)=>{
+  if(!ouvrierId) return;
+  const o=S.ouvriers.find(x=>x.id===ouvrierId); if(!o) return;
+  const body={ouvrier_id:ouvrierId, metier:o.metier||null};
+  try{ await db('heures',{method:'PATCH',query:`?id=eq.${id}`,body}); const x=S.heures.find(h=>h.id===id); if(x){x.ouvrier_id=ouvrierId; x.metier=o.metier||x.metier;} viewDepenses(); }
+  catch(e){ alert(e.message); }
+};
 window.addPhoto=async()=>{
   const el=$('#ph-file'); const files=el&&el.files?Array.from(el.files):[];
   if(!files.length){ $('#dp-msg').innerHTML='<div class="msg err">Choisissez une photo.</div>'; return; }
