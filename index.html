@@ -1204,11 +1204,24 @@ window.payerReste=(ouvrierId,reste)=>{ if(reste<=0){ alert('Rien à payer.'); re
 window.delPaie=async(id)=>{ if(!confirm('Supprimer ce paiement ?'))return; const p=S.paies.find(x=>x.id===id); try{ await db('paies',{method:'DELETE',query:`?id=eq.${id}`}); S.paies=S.paies.filter(x=>x.id!==id); if(p) ouvrierFiche(p.ouvrier_id); }catch(e){alert(e.message);} };
 window.editOuvrier=(id)=>{
   const o=id?S.ouvriers.find(x=>x.id===id):{metier:'Peintre'};
+  let daysBlock='';
+  if(id){
+    const hrs=(S.heures||[]).filter(x=>x.ouvrier_id===id).slice().sort((a,b)=>(b.date_h||'').localeCompare(a.date_h||''));
+    const devOpts=S.devis.map(d=>`<option value="${d.id}">${esc(d.numero)} — ${esc(d.clients?.nom||'')}</option>`).join('');
+    const rows=hrs.length?hrs.map(x=>{ const dv=S.devis.find(d=>d.id===x.devis_id); return `<div class="ch-row" style="grid-template-columns:1fr auto auto"><div><div class="nm">${fdate(x.date_h)} · ${(+x.heures||0)} h</div><div class="mt">${dv?esc(dv.numero):'Sans chantier'}${x.description?' · '+esc(x.description):''} · ${eur(x.taux_horaire)}/h</div></div><div class="amt">${eur((+x.heures||0)*(+x.taux_horaire||0))}</div><button class="x" onclick="delHeureOuv('${x.id}','${id}')">✕</button></div>`;}).join(''):`<div class="empty" style="padding:16px"><b>Aucun jour saisi</b></div>`;
+    daysBlock=`<div class="panel ch-panel"><h3><span class="ci">📅</span> Jours / heures</h3>
+      <div class="grid2"><label class="fld"><span>Chantier</span><select class="inp" id="od-dev"><option value="">— Choisir le chantier —</option>${devOpts}</select></label><label class="fld"><span>Date</span><input class="inp" id="od-date" type="date" value="${today()}"></label></div>
+      <div class="grid2"><label class="fld"><span>Heures</span><input class="inp" id="od-h" type="number" step="0.5" placeholder="Ex : 8"></label><label class="fld"><span>Détail (optionnel)</span><input class="inp" id="od-desc" placeholder="Ex : carrelage sol"></label></div>
+      <div class="editor-actions"><button class="btn" onclick="addHeureOuv('${id}')">+ Ajouter ce jour</button></div>
+      <div style="margin-top:14px">${rows}</div>
+    </div>`;
+  }
   $('#view').innerHTML=`<div class="sec-head"><h2>${id?"Modifier l'ouvrier":'Nouvel ouvrier'}</h2><button class="btn ghost" onclick="go('ouvriers')">← Retour</button></div><div id="ov-msg"></div><div class="panel">
     <label class="fld"><span>Nom</span><input class="inp" id="ov-nom" value="${esc(o.nom||'')}" placeholder="Ex : Ivan"></label>
     <div class="grid2"><label class="fld"><span>Métier</span><select class="inp" id="ov-metier">${METIERS.map(m=>`<option ${o.metier===m?'selected':''}>${m}</option>`).join('')}</select></label>
     <label class="fld"><span>Taux horaire (€)</span><input class="inp" id="ov-taux" type="number" step="0.5" value="${o.taux_horaire??''}" placeholder="Ex : 30"></label></div>
-    <div class="editor-actions"><button class="btn" id="ov-save">Enregistrer</button></div></div>`;
+    <div class="editor-actions"><button class="btn" id="ov-save">Enregistrer</button></div></div>
+    ${daysBlock}`;
   $('#ov-save').onclick=async()=>{
     const nom=$('#ov-nom').value.trim(); if(!nom){$('#ov-msg').innerHTML='<div class="msg err">Le nom est requis.</div>';return;}
     const btn=$('#ov-save');btn.disabled=true;btn.textContent='…';
@@ -1218,6 +1231,15 @@ window.editOuvrier=(id)=>{
       go('ouvriers'); }catch(e){$('#ov-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`;btn.disabled=false;btn.textContent='Enregistrer';}
   };
 };
+window.addHeureOuv=async(ouvrierId)=>{
+  const o=S.ouvriers.find(x=>x.id===ouvrierId); if(!o)return;
+  const devId=$('#od-dev').value, dt=$('#od-date').value||today(), hh=parseFloat($('#od-h').value)||0, desc=$('#od-desc').value.trim()||null;
+  if(!devId){ $('#ov-msg').innerHTML='<div class="msg err">Choisissez le chantier.</div>'; window.scrollTo(0,0); return; }
+  if(!hh){ $('#ov-msg').innerHTML='<div class="msg err">Indiquez les heures.</div>'; window.scrollTo(0,0); return; }
+  try{ const r=await db('heures',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:devId,ouvrier_id:ouvrierId,metier:o.metier||null,description:desc,date_h:dt,heures:hh,taux_horaire:+o.taux_horaire||0}}); S.heures.unshift(r[0]); editOuvrier(ouvrierId); }
+  catch(e){ $('#ov-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; }
+};
+window.delHeureOuv=async(id,ouvrierId)=>{ if(!confirm('Supprimer ce jour ?'))return; try{ await db('heures',{method:'DELETE',query:`?id=eq.${id}`}); S.heures=S.heures.filter(x=>x.id!==id); editOuvrier(ouvrierId); }catch(e){alert(e.message);} };
 window.delOuvrier=async(id)=>{ if(!confirm('Supprimer cet ouvrier ?'))return; try{ await db('ouvriers',{method:'DELETE',query:`?id=eq.${id}`}); S.ouvriers=S.ouvriers.filter(x=>x.id!==id); viewOuvriers(); }catch(e){alert(e.message);} };
 window.hrPickOuvrier=()=>{ const sel=$('#hr-ouv'); if(!sel)return; const opt=sel.options[sel.selectedIndex]; if(!opt||!opt.value)return; const taux=opt.getAttribute('data-taux'); const met=opt.getAttribute('data-metier'); if(taux&&+taux>0)$('#hr-t').value=+taux; if(met){ const ms=$('#hr-metier'); if(ms)[...ms.options].forEach(o=>{ if(o.text===met||o.value===met) ms.value=o.value; }); } };
 
