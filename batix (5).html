@@ -2,13 +2,22 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Batix — Devis & Factures</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Batix">
+<meta name="theme-color" content="#0A0E1C">
+<link id="manifest" rel="manifest">
+<link id="appicon" rel="apple-touch-icon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{
   --bg:#0A0E1C;
@@ -162,11 +171,112 @@ textarea.inp{resize:vertical;min-height:64px}
 .cl-card .meta{display:flex;gap:16px;font-size:12.5px;color:var(--faint);border-top:1px solid var(--line);padding-top:11px;margin-top:11px}
 .cl-card .meta b{color:var(--ink);font-family:'Space Grotesk'}
 #map{height:460px;border-radius:var(--r);border:1px solid var(--line);overflow:hidden;z-index:0}
+.clients-grid{grid-template-columns:repeat(auto-fill,minmax(266px,1fr))}
+.cl-card2{background:linear-gradient(160deg,var(--surface-2),var(--surface));border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow);transition:transform .12s,border-color .15s,box-shadow .15s;position:relative;overflow:hidden}
+.cl-card2:hover{transform:translateY(-3px);border-color:rgba(255,106,43,.42);box-shadow:0 22px 48px -26px rgba(0,0,0,.9)}
+.cl-card2::before{content:"";position:absolute;right:-34px;top:-34px;width:130px;height:130px;background:radial-gradient(circle,var(--accent-dim),transparent 70%);pointer-events:none}
+.cl-top{display:flex;align-items:center;gap:12px;margin-bottom:14px;position:relative}
+.cl-ava{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;font-family:'Space Grotesk';font-weight:700;font-size:18px;color:#fff;flex:none;box-shadow:0 8px 20px -6px rgba(0,0,0,.55)}
+.cl-name{font-family:'Space Grotesk';font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;margin-top:4px}
+.cl-badge.ok{background:rgba(61,220,151,.15);color:var(--ok)}
+.cl-badge.bad{background:rgba(255,107,107,.15);color:var(--bad)}
+.cl-info{color:var(--muted);font-size:12.5px;display:grid;gap:4px;margin-bottom:12px;position:relative}
+.cl-info div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 0;margin-bottom:12px}
+.cl-stats>div{text-align:center}
+.cl-stats b{display:block;font-family:'Space Grotesk';font-weight:600;font-size:15px}
+.cl-stats span{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.03em}
+.cl-actions{display:flex;gap:6px;flex-wrap:wrap}
+.bib-card{background:linear-gradient(160deg,var(--surface-2),var(--surface));border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);transition:transform .12s,border-color .15s;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden}
+.bib-card:hover{transform:translateY(-3px);border-color:rgba(255,106,43,.42)}
+.bib-card::before{content:"";position:absolute;right:-34px;top:-34px;width:120px;height:120px;background:radial-gradient(circle,var(--accent-dim),transparent 70%);pointer-events:none}
+.bib-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative}
+.bib-badge{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 9px;border-radius:20px}
+.bib-badge.ouvrage{background:var(--accent-dim);color:var(--accent-soft)}
+.bib-badge.materiel{background:rgba(96,140,240,.16);color:#8fb4ff}
+.bib-badge.fourniture{background:rgba(61,220,151,.15);color:var(--ok)}
+.bib-unite{font-size:11px;color:var(--faint);font-family:'Space Grotesk';border:1px solid var(--line);padding:2px 8px;border-radius:20px}
+.bib-name{font-family:'Space Grotesk';font-weight:600;font-size:15px;line-height:1.3}
+.bib-desc{color:var(--muted);font-size:12.5px;flex:1}
+.bib-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:11px;margin-top:2px}
+.bib-price{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--accent-soft)}
+.bib-price small{color:var(--faint);font-weight:500;font-size:12px}
+.bib-actions{display:flex;gap:6px}
+.chart{display:flex;align-items:flex-end;gap:10px;height:210px;padding:12px 4px 0}
+.chart .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:8px}
+.chart .bar .b{width:72%;max-width:46px;border-radius:9px 9px 0 0;background:linear-gradient(180deg,var(--accent-soft),var(--accent));min-height:3px;box-shadow:0 10px 22px -10px rgba(255,106,43,.6);transition:height .4s ease}
+.chart .bar .lab{font-size:11px;color:var(--faint);text-transform:capitalize}
+.chart .bar .val{font-size:10.5px;color:var(--muted);font-family:'Space Grotesk';font-weight:600;white-space:nowrap}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.photo-cell{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.photo-cell img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-del{position:absolute;top:5px;right:5px;background:rgba(0,0,0,.62);border:none;color:#fff;border-radius:8px;width:26px;height:26px;cursor:pointer;font-size:12px}
+.ch-panel h3{display:flex;align-items:center;gap:9px}
+.ch-panel h3 .ci{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--accent-dim);color:var(--accent-soft);font-size:14px;flex:none}
+.ch-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);margin-bottom:8px}
+.ch-row:hover{border-color:rgba(255,106,43,.3)}
+.ch-row .nm{font-weight:600}
+.ch-row .mt{color:var(--faint);font-size:12px;margin-top:2px}
+.ch-row .amt{font-family:'Space Grotesk';font-weight:700}
+.ch-row .x{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;width:30px;height:30px;cursor:pointer}
+.ch-row .x:hover{border-color:var(--bad);color:var(--bad)}
+.ch-av{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-family:'Space Grotesk';font-weight:700;font-size:13px;color:#fff;flex:none}
+.metier-chips{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 14px}
+.metier-chip{display:inline-flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12px}
+.metier-chip b{font-family:'Space Grotesk'}
+.metier-chip .dot{width:8px;height:8px;border-radius:50%}
 .leaflet-container{font-family:'Inter',sans-serif}
+
+/* ---------- agenda / calendar ---------- */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px}
+.cal-head h3{margin:0;font-size:18px;text-transform:capitalize;font-weight:600}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-dow{font-size:10.5px;color:var(--faint);text-transform:uppercase;text-align:center;font-weight:600;padding-bottom:2px}
+.cal-cell{aspect-ratio:1;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px;cursor:pointer;position:relative;transition:border-color .12s}
+.cal-cell:hover{border-color:var(--accent)}
+.cal-cell.out{opacity:.32}
+.cal-cell.today .dn{color:var(--accent-soft)}
+.cal-cell.sel{background:var(--accent-dim);border-color:var(--accent)}
+.cal-cell .dn{font-size:13px;font-weight:600;font-family:'Space Grotesk'}
+.cal-cell .dots{position:absolute;bottom:6px;left:6px;right:6px;display:flex;gap:3px;flex-wrap:wrap}
+.cal-cell .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.cal-ev{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--line)}
+.cal-ev:first-child{border-top:none}
+.cal-ev .ti{font-weight:600}
+.cal-ev .no{color:var(--muted);font-size:12.5px;margin-top:2px}
+.cal-ev .hh{color:var(--accent-soft);font-size:12px;font-family:'Space Grotesk';font-weight:600;white-space:nowrap}
+.evtag{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-dim);color:var(--accent-soft);margin-left:8px;vertical-align:middle}
+@media(max-width:820px){ .cal-grid{gap:4px} .cal-cell{padding:4px;border-radius:8px} .cal-cell .dn{font-size:12px} }
+
+/* ---------- home / accueil ---------- */
+.hero{background:linear-gradient(150deg,var(--surface-2),var(--surface));border:1px solid var(--line);border-radius:var(--r);padding:22px 24px;margin:26px 0 8px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-50px;top:-50px;width:200px;height:200px;background:radial-gradient(circle,var(--accent-dim),transparent 70%);pointer-events:none}
+.hero h2{margin:0 0 6px;font-size:20px}
+.hero p{color:var(--muted);font-size:14px;margin:0 0 16px;max-width:54ch}
+.hero textarea{width:100%;min-height:72px;margin-bottom:14px;position:relative}
+.section-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;margin:24px 0 12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;text-align:left;cursor:pointer;transition:border-color .15s,transform .08s}
+.tile:hover{border-color:var(--accent);transform:translateY(-2px)}
+.tile .ic{width:32px;height:32px;color:var(--accent);margin-bottom:12px}
+.tile .ic svg{width:100%;height:100%}
+.tile .tt{font-family:'Space Grotesk';font-weight:600;font-size:15px}
+.tile .ts{color:var(--faint);font-size:12px;margin-top:3px}
+.bottomnav{display:none}
+@media(max-width:820px){
+  .nav{display:none}
+  .topbar{position:static}
+  #app{padding-bottom:82px}
+  .bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:var(--bg-2);border-top:1px solid var(--line);padding:8px 4px calc(8px + env(safe-area-inset-bottom));justify-content:space-around;z-index:20}
+  .bottomnav button{background:none;border:none;color:var(--faint);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:4px 12px;border-radius:10px}
+  .bottomnav button.on{color:var(--accent)}
+  .bottomnav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+}
 
 /* ---------- devis document (print) ---------- */
 #doc-wrap{background:rgba(0,0,0,.55);position:fixed;inset:0;z-index:40;overflow:auto;padding:30px 16px}
-.doc-toolbar{max-width:760px;margin:0 auto 14px;display:flex;gap:10px;justify-content:flex-end}
+.doc-toolbar{max-width:760px;margin:0 auto 14px;display:flex;gap:10px;justify-content:flex-end;position:sticky;top:0;z-index:3;padding:4px 0}
 .doc{max-width:760px;margin:0 auto;background:#fff;color:#1a1f2e;border-radius:10px;padding:46px 50px;font-size:13.5px}
 .doc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:2px solid #0A0E1C;padding-bottom:22px}
 .doc-brand{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:#0A0E1C}
@@ -194,6 +304,39 @@ textarea.inp{resize:vertical;min-height:64px}
 .doc-sign{display:flex;justify-content:space-between;margin-top:34px;font-size:12px;color:#5b6478}
 .doc-sign .b{width:200px}.doc-sign .b .line{height:52px;border:1px dashed #c3c9d8;border-radius:6px;margin-top:6px}
 .doc-stamp{display:inline-block;border:2px solid #1a9e6a;color:#1a9e6a;font-family:'Space Grotesk';font-weight:700;padding:6px 14px;border-radius:6px;transform:rotate(-6deg);font-size:15px;letter-spacing:.03em}
+/* professional document template */
+.dhead{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}
+.dtitle-co{font-weight:700;font-size:15px;color:#1a1f2e;text-transform:uppercase;letter-spacing:.01em}
+.dco{color:#5b6478;font-size:11.5px;margin-top:8px;line-height:1.75}
+.dbig{font-family:'Space Grotesk';font-size:30px;font-weight:700;color:#3f9d8c;text-align:right;letter-spacing:.02em;line-height:1}
+.dnum{text-align:right;color:#3f9d8c;font-size:12.5px;margin-top:2px}
+.dmeta{text-align:right;color:#5b6478;font-size:12px;margin-top:2px}
+.dclient{margin:26px 0 4px}
+.dlabel{color:#3f9d8c;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid #dfe4e2;padding-bottom:5px;margin-bottom:8px}
+.dclient-name{font-weight:700;font-size:14px;color:#1a1f2e}
+.dclient-adr{color:#5b6478;font-size:12px}
+.ddesc{margin:18px 0 6px;color:#333;font-size:12.5px}
+.dtable{width:100%;border-collapse:collapse;margin-top:8px}
+.dtable th{background:#3f9d8c;color:#fff;text-align:left;font-size:11px;font-weight:600;padding:9px 10px}
+.dtable th.c,.dtable td.c{text-align:center}
+.dtable th.r,.dtable td.r{text-align:right}
+.dtable td{padding:11px 10px;border-bottom:1px solid #eef1f0;vertical-align:top;font-size:12px;color:#3a3f4a}
+.dtable tbody tr:nth-child(even){background:#f6f9f8}
+.dtable .cat{font-weight:700;color:#1a1f2e}
+.dtable .desc{color:#6b7381;font-size:11.5px;margin-top:2px}
+.dbottom{display:flex;justify-content:space-between;gap:24px;margin-top:22px}
+.dbottom-left{max-width:52%}
+.dblock{margin-bottom:14px}
+.dblock .dlabel{border:none;margin-bottom:4px}
+.dblock>div{color:#3a3f4a;font-size:12px}
+.dbottom-right{min-width:250px;align-self:flex-start}
+.dtot-line{display:flex;justify-content:space-between;padding:6px 12px;font-weight:600;color:#1a1f2e;font-size:13px}
+.dtot-bar{display:flex;justify-content:space-between;padding:12px 14px;background:#3f9d8c;color:#fff;font-family:'Space Grotesk';font-weight:700;font-size:16px;margin-top:6px;border-radius:4px}
+.dtva{text-align:right;color:#3f9d8c;font-style:italic;font-size:12px;margin-top:14px}
+.dsign{border:1px solid #d7dcda;border-radius:6px;padding:28px 14px 14px;color:#9aa0aa;font-style:italic;font-size:12px;margin-top:18px}
+.dbank{background:#eef4f2;border-radius:6px;padding:14px 16px;margin-top:20px;font-size:12px;color:#3a3f4a}
+.dbank .dlabel{border:none;margin-bottom:6px}
+.dfoot{margin-top:22px;padding-top:12px;border-top:1px solid #eef1f0;color:#8a9299;font-size:10px;line-height:1.6}
 
 @media (max-width:820px){
   #auth{grid-template-columns:1fr}
@@ -218,6 +361,91 @@ textarea.inp{resize:vertical;min-height:64px}
   .doc{max-width:none;border-radius:0;padding:0}
   #auth,#app{display:none!important}
 }
+/* ========== VISUAL POLISH PASS ========== */
+:root{
+  --bg:#070B16; --bg-2:#0D1426; --surface:#121A33; --surface-2:#18213F;
+  --line:#26315A; --accent:#FF6A2B; --accent-soft:#FF9256;
+}
+body{
+  background:
+    radial-gradient(140% 120% at 88% -12%, rgba(255,106,43,.10), transparent 46%),
+    radial-gradient(120% 120% at -5% -5%, rgba(64,92,200,.16), transparent 52%),
+    #070B16;
+  background-attachment:fixed;
+}
+body::before{ content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background-image:linear-gradient(rgba(120,140,220,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(120,140,220,.05) 1px,transparent 1px);
+  background-size:54px 54px;
+  -webkit-mask-image:radial-gradient(125% 100% at 50% 0%,#000,transparent 78%);
+  mask-image:radial-gradient(125% 100% at 50% 0%,#000,transparent 78%); }
+body::after{ content:"";position:fixed;inset:0;z-index:-2;opacity:.45;pointer-events:none;
+  background-image:radial-gradient(1.5px 1.5px at 12% 22%,#cfe4ff,transparent),radial-gradient(1.5px 1.5px at 78% 12%,#fff,transparent),radial-gradient(1px 1px at 60% 40%,#fff,transparent),radial-gradient(1.4px 1.4px at 32% 68%,#ffd9c2,transparent),radial-gradient(1px 1px at 88% 74%,#cfe4ff,transparent),radial-gradient(1.2px 1.2px at 46% 88%,#fff,transparent); }
+
+.btn{ background:linear-gradient(135deg,#FF8038,#FF5E1E); color:#160a03; box-shadow:0 8px 24px -10px rgba(255,106,43,.6); }
+.btn:hover{ filter:brightness(1.06); box-shadow:0 12px 30px -8px rgba(255,106,43,.72) }
+.btn.ghost{ background:rgba(255,255,255,.025); box-shadow:none }
+.brand .glyph{ box-shadow:0 8px 22px -6px rgba(255,106,43,.7) }
+
+.topbar{ background:linear-gradient(180deg,rgba(9,13,26,.86),rgba(9,13,26,.5));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line) }
+.nav button.on{ background:linear-gradient(180deg,rgba(255,106,43,.20),rgba(255,106,43,.06));color:var(--accent-soft);box-shadow:inset 0 0 0 1px rgba(255,106,43,.32) }
+
+.card,.panel,.stat,.tile,.cl-card{ background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0)),var(--surface);box-shadow:0 16px 40px -26px rgba(0,0,0,.85) }
+.stat{ position:relative;overflow:hidden;transition:transform .1s ease,border-color .15s ease }
+.stat::before{ content:"";position:absolute;left:0;top:0;height:2px;width:100%;background:linear-gradient(90deg,var(--accent),transparent 62%);opacity:.75 }
+.stat:hover,.tile:hover{ transform:translateY(-2px);border-color:rgba(255,106,43,.42) }
+.stat .v.accent{ background:linear-gradient(135deg,#FFB07A,#FF6A2B);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent }
+.hero{ background:linear-gradient(150deg,#1b2749,#111a34);box-shadow:0 24px 60px -34px rgba(0,0,0,.9) }
+.tile .ic{ filter:drop-shadow(0 4px 10px rgba(255,106,43,.4)) }
+
+.section-label{ display:flex;align-items:center;gap:12px }
+.section-label::after{ content:"";height:1px;flex:1;background:linear-gradient(90deg,var(--line),transparent) }
+
+.bottomnav{ background:linear-gradient(180deg,rgba(10,14,26,.66),rgba(8,11,22,.96))!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px) }
+.bottomnav button.on{ color:var(--accent) }
+.bottomnav button.on svg{ filter:drop-shadow(0 3px 8px rgba(255,106,43,.6)) }
+
+#view{ animation:viewIn .28s ease both }
+@keyframes viewIn{ from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.cal-cell{ transition:border-color .12s ease,transform .1s ease }
+.cal-cell:hover{ transform:translateY(-1px) }
+.cal-cell.sel{ box-shadow:0 8px 20px -10px rgba(255,106,43,.55) }
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+
+/* ===== BATIX V2 PRO UPGRADE ===== */
+:root{--accent:#ff6a2b;--accent2:#ff9b63;--glass:rgba(20,28,54,.78)}
+body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),transparent 60%),var(--bg)}
+.topbar{position:sticky;top:0;z-index:50;backdrop-filter:blur(18px);background:rgba(10,14,28,.86)!important;box-shadow:0 8px 35px rgba(0,0,0,.22)}
+.brand{letter-spacing:-.04em}.brand .glyph{box-shadow:0 0 0 5px rgba(255,106,43,.10),0 8px 24px rgba(255,106,43,.20)}
+.nav button{transition:all .18s ease}.nav button:hover{color:var(--ink);background:rgba(255,255,255,.045)}
+.nav button.on{box-shadow:inset 0 -2px var(--accent),0 0 20px rgba(255,106,43,.06)}
+#view{animation:batixIn .22s ease both}@keyframes batixIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.stat{position:relative;overflow:hidden;border-color:rgba(255,255,255,.08);background:linear-gradient(145deg,rgba(27,37,71,.9),rgba(20,28,54,.82));box-shadow:var(--shadow)}
+.stat:after{content:'';position:absolute;width:90px;height:90px;right:-35px;top:-35px;border-radius:50%;background:rgba(255,106,43,.09)}
+.panel,.card{box-shadow:var(--shadow);border-color:rgba(255,255,255,.075)}
+.sec-head{margin-top:28px}.sec-head h2{letter-spacing:-.03em}
+.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 18px}.quick-action{border:1px solid var(--line);background:linear-gradient(145deg,var(--surface),var(--bg-2));border-radius:14px;padding:15px;text-align:left;color:var(--ink);cursor:pointer;transition:.18s;box-shadow:0 10px 30px rgba(0,0,0,.14)}.quick-action:hover{transform:translateY(-2px);border-color:rgba(255,106,43,.55);box-shadow:0 14px 35px rgba(0,0,0,.25)}.quick-action b{display:block;margin-top:7px}.quick-action span{font-size:11px;color:var(--muted)}
+.dashboard-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}.dash-card{padding:18px;border:1px solid var(--line);background:var(--surface);border-radius:14px;box-shadow:var(--shadow)}.dash-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.dash-title h3{margin:0}.mini-list{display:grid;gap:9px}.mini-row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.055)}.mini-row:last-child{border-bottom:0}.muted{color:var(--muted)}
+.toolbar-pro{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.toolbar-pro .search{flex:1;min-width:220px;margin:0}
+.badge-live{display:inline-flex;align-items:center;gap:6px;color:var(--ok);font-size:11px}.badge-live:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px rgba(61,220,151,.10)}
+@media(max-width:850px){.quick-actions{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}.topbar{position:relative}.nav{overflow:auto}.who{display:none}}
+@media(max-width:520px){.quick-actions{grid-template-columns:1fr 1fr}.quick-action{padding:12px}.toolbar-pro .search{min-width:100%}}
+
+/* ===== BATIX PRO STUDIO ===== */
+.pro-nav{color:var(--accent-soft)!important;border:1px solid rgba(255,106,43,.25)!important;background:rgba(255,106,43,.07)!important}
+#pro-studio{position:fixed;inset:0;z-index:120;background:rgba(3,6,14,.76);backdrop-filter:blur(14px);padding:24px;overflow:auto}
+.pro-shell{max-width:1180px;margin:auto;background:linear-gradient(145deg,#111a32,#0b1020);border:1px solid rgba(255,255,255,.1);border-radius:22px;box-shadow:0 35px 120px rgba(0,0,0,.65);overflow:hidden}
+.pro-head{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pro-head h2{margin:0}.pro-head p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.pro-tabs{display:flex;gap:7px;padding:12px 16px;border-bottom:1px solid var(--line);overflow:auto}.pro-tab{white-space:nowrap;border:1px solid var(--line);background:transparent;color:var(--muted);padding:9px 12px;border-radius:9px;cursor:pointer}.pro-tab.on{color:var(--accent-soft);border-color:rgba(255,106,43,.45);background:var(--accent-dim)}
+.pro-body{padding:20px}.pro-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.pro-box{border:1px solid var(--line);border-radius:14px;padding:16px;background:rgba(255,255,255,.025)}.pro-box h3{margin:0 0 8px}.pro-box p{font-size:12px;color:var(--muted)}
+.pro-kpi{font-family:'Space Grotesk';font-size:27px;font-weight:700;margin-top:6px}.pro-list{display:grid;gap:8px;margin-top:14px}.pro-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.02)}
+.pro-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pro-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.pro-chat{min-height:210px;max-height:360px;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:12px;background:#090e1b}.pro-bubble{padding:10px 12px;border-radius:10px;margin-bottom:8px;font-size:13px;white-space:pre-wrap}.pro-bubble.bot{background:rgba(255,255,255,.055);color:var(--ink)}.pro-bubble.me{background:var(--accent-dim);margin-left:15%;color:#ffd6c2}.pro-input{display:flex;gap:8px;margin-top:10px}.pro-input input{flex:1}.pro-tag{font-size:10px;color:var(--ok);border:1px solid rgba(61,220,151,.25);padding:3px 7px;border-radius:99px}
+@media(max-width:800px){.pro-grid,.pro-two{grid-template-columns:1fr}.pro-body{padding:13px}#pro-studio{padding:8px}.pro-head{padding:15px}}
+
+/* === Safe-area iPhone (status bar) === */
+body{padding-top:env(safe-area-inset-top,0px)}
+html::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#0A0E1C;z-index:2147483647;pointer-events:none}
+#pro-studio,#doc-wrap{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
 </style>
 </head>
 <body>
@@ -255,11 +483,19 @@ textarea.inp{resize:vertical;min-height:64px}
   <div class="topbar">
     <div class="brand"><span class="glyph">B</span> Batix</div>
     <div class="nav">
-      <button data-view="dash" class="on">Devis</button>
+      <button data-view="accueil" class="on">Accueil</button>
+      <button data-view="dash">Devis</button>
+      <button data-view="chantiers">Chantiers</button>
+      <button data-view="agenda">Agenda</button>
       <button data-view="factures">Factures</button>
+      <button data-view="compta">Comptabilité</button>
+      <button data-view="tresorerie">Trésorerie</button>
       <button data-view="clients">Clients</button>
+      <button data-view="biblio">Bibliothèque</button>
+      <button data-view="ouvriers">Brigade</button>
+      <button data-view="analyse">Analyse</button>
       <button data-view="carte">Carte</button>
-      <button data-view="settings">Mon entreprise</button>
+      <button data-view="settings">Mon entreprise</button><button onclick="openProStudio()" class="pro-nav">⚡ Batix Pro</button>
     </div>
     <div class="who">
       <div class="co"><b id="w-co">—</b><span id="w-mail">—</span></div>
@@ -267,19 +503,71 @@ textarea.inp{resize:vertical;min-height:64px}
     </div>
   </div>
   <div id="view"></div>
+  <div class="bottomnav">
+    <button data-view="accueil" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Accueil</button>
+    <button data-view="dash"><svg viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v4h4"/></svg>Devis</button>
+    <button data-view="agenda"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Agenda</button>
+    <button data-view="factures"><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Factures</button>
+    <button data-view="clients"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/></svg>Clients</button><button onclick="openProStudio()"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 10-14h-7z"/></svg>Pro</button>
+  </div>
 </div>
 
+<div id="cmd" class="hidden" style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.62);backdrop-filter:blur(7px);padding:10vh 18px 18px"><div style="max-width:650px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.55);overflow:hidden"><input id="cmd-input" class="inp" style="border:0;border-bottom:1px solid var(--line);border-radius:0;padding:18px;font-size:16px" placeholder="Rechercher une action… (Échap pour fermer)"><div id="cmd-list" style="padding:8px"></div></div></div>
+
 <div id="doc-wrap" class="hidden"></div>
+<div id="bpick" class="hidden" style="position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);padding:8vh 18px 18px"></div>
+<div id="fmodal" class="hidden" style="position:fixed;inset:0;z-index:112;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);padding:10vh 18px 18px"></div>
+<div id="public" class="hidden"></div>
+<div id="pro-studio" class="hidden">
+  <div class="pro-shell">
+    <div class="pro-head"><div><h2>⚡ Batix Pro Studio</h2><p>Modèles · marge chantier · CRM · relances · pilotage</p></div><button class="btn ghost" onclick="closeProStudio()">Fermer ✕</button></div>
+    <div class="pro-tabs">
+      <button class="pro-tab on" data-protab="pilotage">Pilotage</button><button class="pro-tab" data-protab="aidevis">Modèles</button><button class="pro-tab" data-protab="marge">Marge chantier</button><button class="pro-tab" data-protab="crm">CRM 360</button><button class="pro-tab" data-protab="relances">Relances</button>
+    </div>
+    <div id="pro-body" class="pro-body"></div>
+  </div>
+</div>
+
 
 <script>
 const SUPABASE_URL = 'https://llakesuqcugmdniaqdjr.supabase.co';
+const AI_FN = 'https://llakesuqcugmdniaqdjr.supabase.co/functions/v1/ai-devis';
 const SUPABASE_KEY = 'sb_publishable_SCBPyFQ7ktB9Znho8MM6kg_w-cphtSI';
 
-const S = { token:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], mode:'signup' };
+const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], photos:[], heures:[], ouvriers:[], paies:[], mode:'signup' };
+const TYPEL={ouvrage:'Ouvrage',materiel:'Matériel',fourniture:'Fourniture'};
+const METIERS=['Peintre','Plaquiste','Enduiseur','Électricien','Plombier','Carreleur','Parquettiste','Manœuvre'];
 const $ = s=>document.querySelector(s);
 const eur = n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(+n||0);
 const esc = s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today = ()=>new Date().toISOString().slice(0,10);
+function daysBetween(a,b){ return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
+function dlFile(name,text,type){ const blob=new Blob([type&&type.indexOf('csv')>=0?'\ufeff'+text:text],{type:type||'text/plain;charset=utf-8'}); const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
+window.exportCompta=()=>{
+  const rows=[['Type','Numéro / Libellé','Client / Chantier','Date','Montant EUR']];
+  S.factures.forEach(f=>rows.push(['Facture '+(f.statut==='payee'?'payée':'à encaisser'),f.numero||'',(f.clients&&f.clients.nom)||'',f.date_facture||'',(+f.total||0).toFixed(2)]));
+  S.depenses.forEach(x=>{const dv=S.devis.find(d=>d.id===x.devis_id);rows.push(['Dépense',x.libelle||'',dv?dv.numero:'Sans chantier',x.date_depense||'','-'+(+x.montant||0).toFixed(2)]);});
+  (S.heures||[]).forEach(x=>{const dv=S.devis.find(d=>d.id===x.devis_id);rows.push(["Main d'oeuvre",(x.description||'Heures')+' ('+(+x.heures||0)+'h x '+(+x.taux_horaire||0)+')',dv?dv.numero:'',x.date_h||'','-'+((+x.heures||0)*(+x.taux_horaire||0)).toFixed(2)]);});
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+  dlFile('batix-comptabilite-'+today()+'.csv',csv,'text/csv;charset=utf-8');
+};
+window.exportBackup=()=>{
+  const data={exported:new Date().toISOString(),company:S.company,clients:S.clients,devis:S.devis,factures:S.factures,depenses:S.depenses,heures:S.heures,photos:S.photos,events:S.events,biblio:S.biblio};
+  dlFile('batix-sauvegarde-'+today()+'.json',JSON.stringify(data,null,2),'application/json');
+};
+(function initPWA(){
+  try{
+    const c=document.createElement('canvas'); c.width=c.height=512; const x=c.getContext('2d');
+    x.fillStyle='#0A0E1C'; x.fillRect(0,0,512,512);
+    const g=x.createLinearGradient(0,0,512,512); g.addColorStop(0,'#FF8038'); g.addColorStop(1,'#FF5E1E');
+    const a=96,b=96,w=320,hh=320,rad=72; x.beginPath(); x.moveTo(a+rad,b); x.arcTo(a+w,b,a+w,b+hh,rad); x.arcTo(a+w,b+hh,a,b+hh,rad); x.arcTo(a,b+hh,a,b,rad); x.arcTo(a,b,a+w,b,rad); x.closePath(); x.fillStyle=g; x.fill();
+    x.fillStyle='#160a03'; x.font='bold 230px Arial'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('B',256,276);
+    const png=c.toDataURL('image/png');
+    const ic=document.getElementById('appicon'); if(ic) ic.href=png;
+    const man={name:'Batix — Devis & Factures',short_name:'Batix',start_url:'.',scope:'.',display:'standalone',background_color:'#0A0E1C',theme_color:'#0A0E1C',icons:[{src:png,sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
+    const ml=document.getElementById('manifest'); if(ml) ml.href=URL.createObjectURL(new Blob([JSON.stringify(man)],{type:'application/manifest+json'}));
+  }catch(e){}
+})();
 const fdate = d=>d?new Date(d+'T00:00:00').toLocaleDateString('fr-FR'):'';
 function ligneDetail(l){
   const parts=[];
@@ -335,6 +623,36 @@ async function createClient({nom,adresse,telephone,email}){
   S.clients.push(c[0]); return c[0];
 }
 
+/* ---- session persistence (active on the deployed site; no-op in the chat sandbox) ---- */
+const LS_KEY='batix_session';
+function saveSession(){ try{ localStorage.setItem(LS_KEY,JSON.stringify({refresh:S.refresh})); }catch(e){} }
+function clearSession(){ try{ localStorage.removeItem(LS_KEY); }catch(e){} }
+async function restoreSession(){
+  let s=null; try{ s=JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+  if(!s||!s.refresh) return;
+  try{
+    const d=await auth('token?grant_type=refresh_token',{refresh_token:s.refresh});
+    if(!d.access_token) throw 0;
+    S.token=d.access_token; S.refresh=d.refresh_token; S.user=d.user;
+    const p=await db('profiles',{query:`?select=*,companies(*)&id=eq.${S.user.id}`});
+    if(!p.length) throw 0;
+    S.profile=p[0]; S.company=p[0].companies;
+    await enterApp();
+  }catch(e){ clearSession(); }
+}
+
+async function uploadFile(file){
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+  const path=`${S.company.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const r=await fetch(`${SUPABASE_URL}/storage/v1/object/justificatifs/${path}`,{
+    method:'POST',
+    headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${S.token}`,'Content-Type':file.type||'application/octet-stream','x-upsert':'true'},
+    body:file
+  });
+  if(!r.ok){ const t=await r.text().catch(()=>''); throw new Error('Envoi de la photo impossible — avez-vous lancé le SQL du stockage ? '+t.slice(0,120)); }
+  return `${SUPABASE_URL}/storage/v1/object/public/justificatifs/${path}`;
+}
+
 /* ---- AUTH UI ---- */
 function renderAuthMode(){
   const signup = S.mode==='signup';
@@ -363,12 +681,12 @@ $('#a-submit').onclick = async ()=>{
         try{ d = await auth('token?grant_type=password',{email,password:pass}); }
         catch(_){ authMsg("Compte créé. La confirmation par email est activée dans Supabase — désactivez-la (Authentication → Providers → Email → Confirm email) puis connectez-vous.","info"); S.mode='login'; renderAuthMode(); return; }
       }
-      S.token=d.access_token; S.user=d.user;
+      S.token=d.access_token; S.refresh=d.refresh_token; S.user=d.user;
       const comp = await rpc('create_company',{company_name:co});
       S.company=comp; S.profile={company_id:comp.id};
     } else {
       const d = await auth('token?grant_type=password',{email,password:pass});
-      S.token=d.access_token; S.user=d.user;
+      S.token=d.access_token; S.refresh=d.refresh_token; S.user=d.user;
       const p = await db('profiles',{query:`?select=*,companies(*)&id=eq.${S.user.id}`});
       if(!p.length){ promptCompany(); return; }
       S.profile=p[0]; S.company=p[0].companies;
@@ -399,20 +717,29 @@ function promptCompany(){
 
 /* ---- APP ---- */
 async function enterApp(){
+  saveSession();
   $('#auth').classList.add('hidden');
   $('#app').classList.remove('hidden');
   $('#w-co').textContent = S.company?.nom||'—';
   $('#w-mail').textContent = S.user?.email||'';
   await loadData();
-  go('dash');
+  go('accueil');
 }
-$('#logout').onclick = ()=>location.reload();
-document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>go(b.dataset.view));
+$('#logout').onclick = ()=>{ clearSession(); location.reload(); };
+document.querySelectorAll('.nav button, .bottomnav button').forEach(b=>b.onclick=()=>go(b.dataset.view));
 function go(v){
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+  document.querySelectorAll('.nav button, .bottomnav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+  if(v==='accueil') viewAccueil();
   if(v==='dash') viewDash();
+  if(v==='chantiers') viewChantiers();
+  if(v==='agenda') viewAgenda();
+  if(v==='compta') viewCompta();
+  if(v==='tresorerie') viewTresorerie();
   if(v==='factures') viewFactures();
   if(v==='clients') viewClients();
+  if(v==='biblio') viewBiblio();
+  if(v==='ouvriers') viewOuvriers();
+  if(v==='analyse') viewAnalyse();
   if(v==='carte') viewCarte();
   if(v==='settings') viewSettings();
   if(v==='editor') viewEditor();
@@ -423,6 +750,13 @@ async function loadData(){
   S.devis = await db('devis',{query:`?select=*,clients(nom),devis_lignes(*)&company_id=eq.${S.company.id}&order=created_at.desc`});
   S.factures = await db('factures',{query:`?select=*,clients(nom)&company_id=eq.${S.company.id}&order=created_at.desc`});
   S.clients = await db('clients',{query:`?select=*&company_id=eq.${S.company.id}&order=nom`});
+  S.depenses = await db('depenses',{query:`?select=*&company_id=eq.${S.company.id}&order=date_depense.desc`});
+  S.events = await db('events',{query:`?select=*&company_id=eq.${S.company.id}&order=date_event`});
+  S.biblio = await db('bibliotheque',{query:`?select=*&company_id=eq.${S.company.id}&order=designation`});
+  try{ S.photos = await db('chantier_photos',{query:`?select=*&company_id=eq.${S.company.id}&order=created_at.desc`}); }catch(e){ S.photos=[]; }
+  try{ S.heures = await db('heures',{query:`?select=*&company_id=eq.${S.company.id}&order=date_h.desc`}); }catch(e){ S.heures=[]; }
+  try{ S.ouvriers = await db('ouvriers',{query:`?select=*&company_id=eq.${S.company.id}&order=nom`}); }catch(e){ S.ouvriers=[]; }
+  try{ S.paies = await db('paies',{query:`?select=*&company_id=eq.${S.company.id}&order=date_paie.desc`}); }catch(e){ S.paies=[]; }
 }
 
 /* ---- DASHBOARD ---- */
@@ -430,52 +764,89 @@ function viewDash(){
   const nb=S.devis.length, acc=S.devis.filter(d=>d.statut==='accepte');
   const totAll=S.devis.reduce((s,d)=>s+(+d.total||0),0);
   const att=acc.reduce((s,d)=>s+(+d.total||0),0);
+  const paid=S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0);
+  const unpaid=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);
+  const dep=S.depenses.reduce((s,d)=>s+(+d.montant||0),0);
+  const moDash=(S.heures||[]).reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const marge=paid-dep-moDash;
   const invoiced=new Set(S.factures.map(f=>f.devis_id));
-  const rows = S.devis.length ? `
-    <div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Statut</div><div class="t">Total</div></div>
-    ${S.devis.map(d=>`
-      <div class="row">
-        <div class="n">${esc(d.numero)}</div>
-        <div class="c">${esc(d.clients?.nom||'—')}</div>
-        <div class="d" style="color:var(--faint)">${fdate(d.date_devis)}</div>
-        <div><span class="chip ${d.statut}">${({brouillon:'Brouillon',accepte:'Accepté',refuse:'Refusé'})[d.statut]}</span></div>
-        <div class="t">${eur(d.total)}
-          <div class="act" style="margin-top:8px">
-            <button class="btn ghost sm" onclick="openDoc('${d.id}')">Voir / PDF</button>
-            ${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepté</button>`:
-              (invoiced.has(d.id)?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Créer facture</button>`)}
-          </div>
-        </div>
-      </div>`).join('')}` 
-    : `<div class="empty"><b>Aucun devis pour l'instant</b>Créez votre premier devis pour démarrer.</div>`;
-  $('#view').innerHTML = `
-    <div class="stats">
-      <div class="stat"><div class="k">Montant total des devis</div><div class="v num accent">${eur(totAll)}</div><div class="sub">${nb} devis au total</div></div>
-      <div class="stat"><div class="k">Montant accepté</div><div class="v num">${eur(att)}</div><div class="sub">${acc.length} devis acceptés</div></div>
-      <div class="stat"><div class="k">Clients</div><div class="v num">${S.clients.length}</div><div class="sub">enregistrés</div></div>
+  const pending=S.devis.filter(d=>d.statut==='brouillon').length;
+  const rows=S.devis.length?`<div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Statut</div><div class="t">Total</div></div>${S.devis.slice(0,12).map(d=>`<div class="row"><div class="n">${esc(d.numero)}</div><div class="c">${esc(d.clients?.nom||'—')}</div><div class="d" style="color:var(--faint)">${fdate(d.date_devis)}</div><div><span class="chip ${d.statut}">${({brouillon:'Brouillon',accepte:'Accepté',refuse:'Refusé'})[d.statut]||d.statut}</span></div><div class="t">${eur(d.total)}<div class="act" style="margin-top:8px"><button class="btn ghost sm" onclick="openDoc('${d.id}')">PDF</button><button class="btn ghost sm" onclick="editDevis('${d.id}')">Éditer</button><button class="btn ghost sm" onclick="openDepenses('${d.id}')">Chantier</button>${d.statut!=='accepte'?`<button class="btn sm" onclick="setStatut('${d.id}','accepte')">Accepter</button>`:(factureRestant(d.id).restant<=0.5?`<span style="font-size:12px;color:var(--faint);align-self:center">Facturé ✓</span>`:`<button class="btn sm" onclick="createFacture('${d.id}')">Facture</button>`)}<button class="btn ghost sm" onclick="duplicateDevis('${d.id}')">Dupliquer</button><button class="btn ghost sm" onclick="shareDevisLink('${d.id}')">Signer</button><button class="btn ghost sm" onclick="delDevis('${d.id}')">Suppr.</button></div></div></div>`).join('')}`:`<div class="empty"><b>Aucun devis pour l'instant</b>Créez votre premier devis pour démarrer.</div>`;
+  const upcoming=S.events.filter(e=>e.date_event>=today()).sort((a,b)=>a.date_event.localeCompare(b.date_event)).slice(0,4);
+  const _t=today();
+  const overdue=S.factures.filter(f=>f.statut!=='payee'&&f.date_facture&&daysBetween(f.date_facture,_t)>30);
+  const todayEv=S.events.filter(e=>e.date_event===_t);
+  const staleDevis=S.devis.filter(d=>d.statut==='brouillon'&&d.date_devis&&daysBetween(d.date_devis,_t)>10);
+  const al=[];
+  if(overdue.length) al.push(`💸 ${overdue.length} facture(s) impayée(s) depuis +30 j — ${eur(overdue.reduce((s,f)=>s+(+f.total||0),0))}`);
+  if(todayEv.length) al.push(`📅 ${todayEv.length} rendez-vous aujourd'hui`);
+  if(staleDevis.length) al.push(`📄 ${staleDevis.length} devis en attente depuis +10 j`);
+  const alertsHtml=al.length?`<div class="panel" style="border-color:rgba(255,106,43,.45);background:linear-gradient(180deg,rgba(255,106,43,.08),transparent)"><b style="color:var(--accent-soft)">À suivre</b><div style="margin-top:8px;display:grid;gap:6px">${al.map(a=>`<div style="font-size:13.5px">${a}</div>`).join('')}</div></div>`:'';
+  $('#view').innerHTML=`
+    <div class="sec-head"><div><h2 style="margin-bottom:3px">Tableau de bord</h2><span class="badge-live">Espace entreprise actif</span></div><div style="display:flex;gap:8px"><button class="btn ghost" onclick="openImport()">⬇ Importer</button><button class="btn" onclick="newDevis()">+ Nouveau devis</button></div></div>
+    ${alertsHtml}
+    <div class="quick-actions">
+      <div class="quick-action" onclick="newDevis()"><b>＋ Nouveau devis</b><span>Créer en quelques secondes</span></div>
+      <div class="quick-action" onclick="go('factures')"><b>€ Factures</b><span>${eur(unpaid)} à encaisser</span></div>
+      <div class="quick-action" onclick="go('agenda')"><b>◷ Agenda</b><span>${upcoming.length} prochain${upcoming.length>1?'s':''} rendez-vous</span></div>
+      <div class="quick-action" onclick="go('compta')"><b>↗ Comptabilité</b><span>CA et marge estimés</span></div>
     </div>
-    <div class="sec-head"><h2>Vos devis</h2><button class="btn" onclick="newDevis()">+ Nouveau devis</button></div>
-    <div class="card">${rows}</div>`;
+    <div class="stats">
+      <div class="stat"><div class="k">CA encaissé</div><div class="v num accent">${eur(paid)}</div><div class="sub">${S.factures.filter(f=>f.statut==='payee').length} facture(s) payée(s)</div></div>
+      <div class="stat"><div class="k">À encaisser</div><div class="v num">${eur(unpaid)}</div><div class="sub">factures ouvertes</div></div>
+      <div class="stat"><div class="k">Devis acceptés</div><div class="v num">${eur(att)}</div><div class="sub">${acc.length} accepté(s)</div></div>
+      <div class="stat"><div class="k">Marge encaissée*</div><div class="v num" style="color:${marge>=0?'var(--ok)':'var(--bad)'}">${eur(marge)}</div><div class="sub">encaissé − dépenses − MO</div></div>
+    </div>
+    <div class="dashboard-grid" style="margin-top:14px">
+      <div class="dash-card"><div class="dash-title"><h3>Vue activité</h3><span class="muted">${nb} devis · ${S.clients.length} clients</span></div><div class="mini-list"><div class="mini-row"><span class="muted">Volume devis</span><b>${eur(totAll)}</b></div><div class="mini-row"><span class="muted">Dépenses enregistrées</span><b>${eur(dep)}</b></div><div class="mini-row"><span class="muted">Brouillons</span><b>${pending}</b></div><div class="mini-row"><span class="muted">Factures</span><b>${S.factures.length}</b></div></div></div>
+      <div class="dash-card"><div class="dash-title"><h3>Prochains rendez-vous</h3><button class="btn ghost sm" onclick="go('agenda')">Voir tout</button></div><div class="mini-list">${upcoming.length?upcoming.map(e=>`<div class="mini-row"><span><b>${esc(e.titre)}</b><br><span class="muted">${fdate(e.date_event)}${e.heure?' · '+esc(e.heure):''}</span></span><span class="muted">→</span></div>`).join(''):`<div class="empty" style="padding:12px"><b>Aucun rendez-vous</b></div>`}</div></div>
+    </div>
+    <div class="sec-head"><h2>Vos devis</h2><span class="muted">12 derniers</span></div>
+    <div class="toolbar-pro"><input class="inp search" id="dv-search" placeholder="Rechercher numéro ou client…"><button class="btn ghost sm" onclick="go('clients')">Clients</button><button class="btn ghost sm" onclick="go('settings')">Paramètres</button></div>
+    <div class="card" id="dv-list">${rows}</div>
+    <div style="font-size:11px;color:var(--faint);margin-top:10px">* Indicateur simplifié : encaissements moins dépenses enregistrées.</div>`;
+  const q=$('#dv-search'); if(q) q.oninput=()=>{const v=q.value.toLowerCase();document.querySelectorAll('#dv-list .row').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(v)?'':'none')};
 }
-
+window.editDevis=(id)=>{
+  const d=S.devis.find(x=>x.id===id); if(!d)return;
+  ED={ id:d.id, numero:d.numero, date:d.date_devis, client_id:d.client_id||'', newClient:'', newAddr:'',
+    mat:d.materiel_fourni_par||'entreprise', notes:d.notes||'', descChantier:d.description_chantier||'',
+    acompte:d.acompte_pct||'', duree:d.duree_estimee||'', tva:d.tva_rate||0,
+    lignes:(d.devis_lignes||[]).slice().sort((a,b)=>a.ordre-b.ordre).map(l=>({categorie:l.categorie||'',description:l.description||'',quantite:l.quantite??'',unite:l.unite||'forfait',prix_unitaire:l.prix_unitaire??'',montant:l.montant??''})) };
+  if(!ED.lignes.length) ED.lignes=[{categorie:'',description:'',quantite:'',unite:'m²',prix_unitaire:'',montant:''}];
+  go('editor');
+};
+window.duplicateDevis=async(id)=>{
+  const d=S.devis.find(x=>x.id===id); if(!d)return;
+  ED={numero:nextNum('DEV',S.devis),date:today(),client_id:d.client_id||'',newClient:'',newAddr:'',mat:d.materiel_fourni_par||'entreprise',notes:d.notes||'',descChantier:d.description_chantier||'',acompte:d.acompte_pct||'',duree:d.duree_estimee||'',tva:d.tva_rate||0,lignes:(d.devis_lignes||[]).map(l=>({categorie:l.categorie||'',description:l.description||'',quantite:l.quantite??'',unite:l.unite||'forfait',prix_unitaire:l.prix_unitaire??'',montant:l.montant??''}))};
+  go('editor');
+};
 window.setStatut = async (id,st)=>{
   await db('devis',{method:'PATCH',query:`?id=eq.${id}`,body:{statut:st}});
   const d=S.devis.find(x=>x.id===id); if(d)d.statut=st; viewDash();
+};
+window.delDevis = async (id)=>{
+  const d=S.devis.find(x=>x.id===id);
+  if(!confirm(`Supprimer le devis ${d?d.numero:''} ?\nCette action est définitive (les postes et les dépenses de ce chantier seront supprimés).`)) return;
+  try{
+    await db('depenses',{method:'DELETE',query:`?devis_id=eq.${id}`});
+    await db('devis',{method:'DELETE',query:`?id=eq.${id}`});
+    await loadData(); viewDash();
+  }catch(e){ alert(e.message); }
 };
 
 /* ---- EDITOR ---- */
 let ED=null;
 window.newDevis = ()=>{
-  const y=new Date().getFullYear();
-  const seq=String(S.devis.length+1).padStart(3,'0');
-  ED={ numero:`DEV-${y}-${seq}`, date:today(), client_id:'', newClient:'', newAddr:'', mat:'entreprise', notes:'',
+  ED={ numero:nextNum('DEV',S.devis), date:today(), client_id:'', newClient:'', newAddr:'', mat:'entreprise', notes:'',
+       descChantier:'', acompte:'', duree:'', tva:(S.company&&S.company.tva_applicable?20:0),
        lignes:[{categorie:'',description:'',quantite:'',unite:'m²',prix_unitaire:'',montant:''}] };
   go('editor');
 };
 function viewEditor(){
   const opts = S.clients.map(c=>`<option value="${c.id}" ${ED.client_id===c.id?'selected':''}>${esc(c.nom)}</option>`).join('');
   $('#view').innerHTML = `
-    <div class="sec-head"><h2>Nouveau devis</h2><button class="btn ghost" onclick="go('dash')">← Retour</button></div>
+    <div class="sec-head"><h2>${ED.id?'Modifier le devis':'Nouveau devis'}</h2><button class="btn ghost" onclick="go('dash')">← Retour</button></div>
     <div id="ed-msg"></div>
     <div class="panel">
       <div class="grid2">
@@ -493,6 +864,11 @@ function viewEditor(){
         <button data-v="entreprise" class="${ED.mat==='entreprise'?'on':''}">L'entreprise</button>
         <button data-v="client" class="${ED.mat==='client'?'on':''}">Le client</button>
       </div>
+      <label class="fld" style="margin-top:14px"><span>Description du chantier (ligne au-dessus du tableau)</span><textarea class="inp" id="e-desc" placeholder="Ex : Salle de bain — pose de zellige (7 × 27 cm), surface 50 m².">${esc(ED.descChantier||'')}</textarea></label>
+      <div class="grid2">
+        <label class="fld"><span>Acompte à la signature (%)</span><input class="inp" id="e-acompte" type="number" step="1" placeholder="Ex : 30" value="${ED.acompte||''}"></label>
+        <label class="fld"><span>Durée estimée</span><input class="inp" id="e-duree" placeholder="Ex : 5 à 7 jours" value="${esc(ED.duree||'')}"></label>
+      </div>
     </div>
 
     <div class="panel">
@@ -500,7 +876,18 @@ function viewEditor(){
       <div class="lignes-head"><div>Catégorie</div><div>Description</div><div>Qté</div><div>Unité</div><div>P.U.</div><div>Montant</div><div></div></div>
       <div id="e-lignes"></div>
       <button class="btn ghost sm" onclick="addLigne()" style="margin-top:4px">+ Ajouter un poste</button>
-      <div class="tot-line"><div class="lab">Total ${S.company.tva_applicable?'TTC':'(TVA non applicable)'}</div><div class="val" id="e-total">${eur(0)}</div></div>
+      <button class="btn ghost sm" onclick="openBiblioPick()" style="margin-top:4px;margin-left:6px">+ depuis la bibliothèque</button>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);gap:14px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px">TVA
+          <select class="inp" id="e-tva" style="width:auto;padding:8px 10px" onchange="ED.tva=this.value;calcTotal()">
+            <option value="0" ${(+ED.tva===0)?'selected':''}>Non applicable</option>
+            <option value="5.5" ${(+ED.tva===5.5)?'selected':''}>5,5 %</option>
+            <option value="10" ${(+ED.tva===10)?'selected':''}>10 %</option>
+            <option value="20" ${(+ED.tva===20)?'selected':''}>20 %</option>
+          </select>
+        </label>
+        <div id="e-totbox" style="text-align:right"></div>
+      </div>
     </div>
 
     <div class="panel">
@@ -542,12 +929,20 @@ window.updateAmt=i=>{
 };
 window.addLigne=()=>{ED.lignes.push({categorie:'',description:'',quantite:'',unite:'m²',prix_unitaire:'',montant:''});renderLignes();};
 window.delLigne=i=>{ED.lignes.splice(i,1);if(!ED.lignes.length)ED.lignes.push({categorie:'',description:'',quantite:'',unite:'m²',prix_unitaire:'',montant:''});renderLignes();};
-window.calcTotal=()=>{const t=ED.lignes.reduce((s,l)=>s+(+l.montant||0),0);const el=$('#e-total');if(el)el.textContent=eur(t);ED._total=t;};
+window.calcTotal=()=>{
+  const ht=ED.lignes.reduce((s,l)=>s+(+l.montant||0),0); ED._total=ht;
+  const rate=+ED.tva||0, tva=ht*rate/100, ttc=ht+tva;
+  const box=$('#e-totbox');
+  if(box){ box.innerHTML = rate>0
+    ? `<div style="color:var(--muted);font-size:13px">Total HT&nbsp;: <b>${eur(ht)}</b></div><div style="color:var(--muted);font-size:13px">TVA ${rate}%&nbsp;: <b>${eur(tva)}</b></div><div class="val">${eur(ttc)} <span style="font-size:12px;color:var(--muted)">TTC</span></div>`
+    : `<div class="val">${eur(ht)}</div><div style="color:var(--faint);font-size:11px">TVA non applicable</div>`; }
+};
 
 async function saveDevis(){
   const btn=$('#e-save'); const em=$('#ed-msg');
   ED.numero=$('#e-num').value.trim(); ED.date=$('#e-date').value;
   ED.client_id=$('#e-client').value; ED.newClient=$('#e-newclient').value.trim(); ED.newAddr=$('#e-newaddr').value.trim(); ED.notes=$('#e-notes').value;
+  ED.descChantier=$('#e-desc')?.value.trim()||''; ED.acompte=$('#e-acompte')?.value||''; ED.duree=$('#e-duree')?.value.trim()||''; ED.tva=$('#e-tva')?.value??ED.tva;
   const lignes=ED.lignes.filter(l=>l.categorie.trim()||(+l.montant));
   if(!lignes.length){em.innerHTML='<div class="msg err">Ajoutez au moins un poste avec un prix.</div>';return;}
   if(!ED.client_id&&!ED.newClient){em.innerHTML='<div class="msg err">Choisissez un client ou saisissez-en un nouveau.</div>';return;}
@@ -559,10 +954,20 @@ async function saveDevis(){
       clientId=c.id;
     }
     const total=lignes.reduce((s,l)=>s+(+l.montant||0),0);
-    const dv=await db('devis',{method:'POST',prefer:'return=representation',body:{
-      company_id:S.company.id,numero:ED.numero,client_id:clientId,date_devis:ED.date,
-      statut:'brouillon',materiel_fourni_par:ED.mat,notes:ED.notes,total}});
-    const did=dv[0].id;
+    const body={numero:ED.numero,client_id:clientId,date_devis:ED.date,materiel_fourni_par:ED.mat,notes:ED.notes,total,
+      description_chantier:ED.descChantier||null,acompte_pct:parseFloat(ED.acompte)||null,duree_estimee:ED.duree||null,tva_rate:parseFloat(ED.tva)||0};
+    let did;
+    if(ED.id){
+      await db('devis',{method:'PATCH',query:`?id=eq.${ED.id}`,body});
+      did=ED.id;
+      await db('devis_lignes',{method:'DELETE',query:`?devis_id=eq.${ED.id}`});
+    } else {
+      body.company_id=S.company.id; body.statut='brouillon';
+      let dv;
+      try{ dv=await db('devis',{method:'POST',prefer:'return=representation',body}); }
+      catch(err){ if(String(err.message||'').includes('duplicate')){ await loadData(); body.numero=nextNum('DEV',S.devis); dv=await db('devis',{method:'POST',prefer:'return=representation',body}); } else throw err; }
+      did=dv[0].id;
+    }
     await db('devis_lignes',{method:'POST',prefer:'return=representation',body:
       lignes.map((l,i)=>({devis_id:did,categorie:l.categorie,description:l.description,
         quantite:(l.unite!=='forfait'&&+l.quantite)?+l.quantite:null,
@@ -573,16 +978,481 @@ async function saveDevis(){
   }catch(e){em.innerHTML=`<div class="msg err">${esc(e.message)}</div>`;btn.disabled=false;btn.textContent='Enregistrer le devis';}
 }
 
-/* ---- FACTURES ---- */
-window.createFacture = async (devisId)=>{
-  const d=S.devis.find(x=>x.id===devisId); if(!d)return;
-  const y=new Date().getFullYear();
-  const seq=String(S.factures.length+1).padStart(3,'0');
+/* ---- ACCUEIL (home) ---- */
+const IC={
+  compta:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>`,
+  fac:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>`,
+  clients:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><path d="M16 5a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>`,
+  map:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>`,
+  co:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M8 8V5a2 2 0 012-2h4a2 2 0 012 2v3"/></svg>`,
+  biblio:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2z"/><path d="M8 3v18"/></svg>`,
+  chantier:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M6 21V9l6-4 6 4v12"/><path d="M9 21v-6h6v6"/></svg>`,
+  tresor:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h3"/></svg>`,
+  ai:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l1.6 3.9L17.5 8l-3.9 1.6L12 13l-1.6-3.4L6.5 8l3.9-1.1L12 3z"/><path d="M18 14l.8 2 .2.8 2 .8-2 .8-.2.8-.8 2-.8-2-.2-.8-2-.8 2-.8.2-.8.8-2z"/></svg>`,
+  brigade:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 17h18v2H3z"/><path d="M5 17a7 7 0 0114 0"/><path d="M10 10V6.5a2 2 0 014 0V10"/></svg>`,
+  analyse:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18"/><rect x="5" y="12" width="3" height="6" rx=".5"/><rect x="10.5" y="7" width="3" height="11" rx=".5"/><rect x="16" y="4" width="3" height="14" rx=".5"/></svg>`
+};
+function viewAccueil(){
+  $('#view').innerHTML=`
+    <div class="hero">
+      <h2>Assistant devis IA 🤖</h2>
+      <p>Décris les travaux — l'IA rédige le devis avec tes prix de la bibliothèque.</p>
+      <textarea class="inp" id="assist-txt" placeholder="Ex : rénovation salle de bain 8 m², dépose baignoire, douche italienne, carrelage murs et sol, peinture plafond…"></textarea>
+      <button class="btn" onclick="assistAI()">✨ Générer le devis avec l'IA</button> <button class="btn ghost" onclick="openImport()" style="margin-left:6px">⬇ Importer un devis</button>
+    </div>
+    <div class="section-label">Accès rapide</div>
+    <div class="tiles">
+      <div class="tile" onclick="openAIDevis()" style="border-color:rgba(255,106,43,.5)"><div class="ic">${IC.ai}</div><div class="tt">Assistant IA</div><div class="ts">Devis depuis ton texte</div></div>
+      <div class="tile" onclick="go('chantiers')"><div class="ic">${IC.chantier}</div><div class="tt">Chantiers</div><div class="ts">Matériaux, heures, marge</div></div>
+      <div class="tile" onclick="go('ouvriers')"><div class="ic">${IC.brigade}</div><div class="tt">Brigade</div><div class="ts">Équipe & heures par métier</div></div>
+      <div class="tile" onclick="go('analyse')"><div class="ic">${IC.analyse}</div><div class="tt">Analyse</div><div class="ts">Coûts moyens & marges</div></div>
+      <div class="tile" onclick="go('compta')"><div class="ic">${IC.compta}</div><div class="tt">Comptabilité</div><div class="ts">Recettes, impayés, cotisations</div></div>
+      <div class="tile" onclick="go('tresorerie')"><div class="ic">${IC.tresor}</div><div class="tt">Trésorerie</div><div class="ts">Ce qui doit rentrer</div></div>
+      <div class="tile" onclick="go('factures')"><div class="ic">${IC.fac}</div><div class="tt">Factures</div><div class="ts">Suivi des paiements</div></div>
+      <div class="tile" onclick="go('clients')"><div class="ic">${IC.clients}</div><div class="tt">Clients</div><div class="ts">Fiches & recherche</div></div>
+      <div class="tile" onclick="go('biblio')"><div class="ic">${IC.biblio}</div><div class="tt">Bibliothèque</div><div class="ts">Vos prix réutilisables</div></div>
+      <div class="tile" onclick="go('carte')"><div class="ic">${IC.map}</div><div class="tt">Carte</div><div class="ts">Clients par adresse</div></div>
+      <div class="tile" onclick="go('settings')"><div class="ic">${IC.co}</div><div class="tt">Mon entreprise</div><div class="ts">Infos & TVA</div></div>
+    </div>`;
+}
+window.assistCreate=()=>{
+  const t=($('#assist-txt')?.value||'').trim();
+  newDevis();
+  if(t){ ED.notes=t; const el=$('#e-notes'); if(el) el.value=t; }
+};
+
+/* ---- COMPTABILITÉ ---- */
+function monthlyEncaisse(){
+  const now=new Date(); const arr=[];
+  for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); arr.push({y:d.getFullYear(),m:d.getMonth(),label:d.toLocaleDateString('fr-FR',{month:'short'}),val:0}); }
+  S.factures.filter(f=>f.statut==='payee').forEach(f=>{ if(!f.date_facture)return; const d=new Date(f.date_facture+'T00:00:00'); const it=arr.find(a=>a.y===d.getFullYear()&&a.m===d.getMonth()); if(it) it.val+=(+f.total||0); });
+  return arr;
+}
+function viewCompta(){
+  const paid=S.factures.filter(f=>f.statut==='payee');
+  const recettes=paid.reduce((s,f)=>s+(+f.total||0),0);
+  const impayes=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);
+  const depTot=S.depenses.reduce((s,x)=>s+(+x.montant||0),0);
+  const moTot=(S.heures||[]).reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const taux=(S.company.taux_cotisation!=null?+S.company.taux_cotisation:21.2);
+  const cotis=recettes*taux/100;
+  const net=recettes-cotis-depTot-moTot;
+  const mca=monthlyEncaisse(); const maxV=Math.max(1,...mca.map(x=>x.val));
+  const chartBars=mca.map(x=>`<div class="bar"><div class="val">${x.val?new Intl.NumberFormat('fr-FR').format(Math.round(x.val)):''}</div><div class="b" style="height:${x.val?Math.max(3,Math.round(x.val/maxV*100)):0}%"></div><div class="lab">${x.label}</div></div>`).join('');
+  const lignes=paid.length?paid.map(f=>{
+    const hue=clientHue(f.clients?.nom||f.numero||'');
+    return `<div class="ch-row"><div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},55%,52%),hsl(${(hue+40)%360},50%,42%))">${esc(clientInitials(f.clients?.nom||f.numero))}</div><div><div class="nm">${esc(f.numero)}</div><div class="mt">${esc(f.clients?.nom||'—')} · ${fdate(f.date_facture)}</div></div></div><div class="amt" style="color:var(--ok)">${eur(f.total)}</div><div></div></div>`;
+  }).join(''):`<div class="empty"><b>Aucune recette encaissée</b>Marquez une facture « Payée » pour la voir ici.</div>`;
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Comptabilité</h2><button class="btn ghost sm" onclick="exportCompta()">⬇ Export comptable (CSV)</button></div>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <div class="stat"><div class="k">Recettes encaissées</div><div class="v num accent">${eur(recettes)}</div><div class="sub">${paid.length} facture${paid.length>1?'s':''} payée${paid.length>1?'s':''}</div></div>
+      <div class="stat"><div class="k">Dépenses matériaux</div><div class="v num">${eur(depTot)}</div><div class="sub">tous chantiers</div></div>
+      <div class="stat"><div class="k">Main d'œuvre</div><div class="v num">${eur(moTot)}</div><div class="sub">heures chantiers</div></div>
+      <div class="stat"><div class="k">Impayés</div><div class="v num">${eur(impayes)}</div><div class="sub">à encaisser</div></div>
+      <div class="stat"><div class="k">Cotisations à prévoir</div><div class="v num">${eur(cotis)}</div><div class="sub">≈ ${taux}% des recettes</div></div>
+    </div>
+    <div class="panel" style="margin-top:2px;background:linear-gradient(150deg,#1b2749,#111a34)">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center">
+        <div><div style="color:var(--muted);font-size:13px">Net estimé (recettes − dépenses − main d'œuvre − cotisations)</div><div class="num" style="font-family:'Space Grotesk';font-size:28px;font-weight:700;margin-top:4px;color:${net>=0?'var(--ok)':'var(--bad)'}">${eur(net)}</div></div>
+        <div style="color:var(--faint);font-size:12px;max-width:44ch">Estimation indicative. Ajustez votre taux dans « Mon entreprise » (vérifiable sur autoentrepreneur.urssaf.fr).</div>
+      </div>
+    </div>
+    <div class="sec-head"><h2>Chiffre d'affaires encaissé</h2><span class="muted">6 derniers mois</span></div>
+    <div class="panel"><div class="chart">${chartBars}</div></div>
+    <div class="panel ch-panel">
+      <h3><span class="ci">💰</span> Livre des recettes</h3>
+      <div style="margin-top:6px">${lignes}</div>
+    </div>
+    <div class="panel ch-panel">
+      <h3><span class="ci">🧾</span> Dépenses par chantier <span class="muted" style="font-weight:400;font-size:13px">· ${S.depenses.length} ligne(s)</span></h3>
+      <div style="margin-top:8px;display:grid;gap:12px">${(()=>{
+        if(!S.depenses.length) return '<div class="empty"><b>Aucune dépense</b>Ajoutez des matériaux depuis un chantier.</div>';
+        const groups={};
+        S.depenses.forEach(x=>{ const k=x.devis_id||'none'; (groups[k]=groups[k]||[]).push(x); });
+        const optsAll=S.devis.map(d=>`<option value="${d.id}">${esc(d.numero)} — ${esc(d.clients?.nom||'')}</option>`).join('');
+        return Object.entries(groups).map(([k,list])=>{
+          const dv=k!=='none'?S.devis.find(d=>d.id===k):null;
+          const tot=list.reduce((s,x)=>s+(+x.montant||0),0);
+          const hue=clientHue(dv?dv.numero:'sans');
+          const title=dv?`${esc(dv.numero)} — ${esc(dv.clients?.nom||'')}`:'<span style="color:var(--warn)">Sans chantier</span>';
+          const rows=list.map(x=>`<div class="ch-row" style="grid-template-columns:1fr auto ${k==='none'?'auto ':''}auto">
+            <div><div class="nm">${esc(x.libelle)}</div><div class="mt">${fdate(x.date_depense)}</div></div>
+            <div class="amt">${eur(x.montant)}</div>
+            ${k==='none'?`<div><select class="inp" style="padding:7px 10px;font-size:12px" onchange="reassignDepense('${x.id}',this.value)"><option value="">↪ Rattacher…</option>${optsAll}</select></div>`:''}
+            <button class="x" onclick="delDepenseC('${x.id}')">✕</button>
+          </div>`).join('');
+          return `<div style="border:1px solid var(--line);border-radius:14px;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line)">
+              <div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},55%,52%),hsl(${(hue+40)%360},50%,42%))">${dv?esc((dv.numero||'').slice(-2)):'—'}</div><div><div class="nm">${title}</div><div class="mt">${list.length} ligne(s)</div></div></div>
+              <div class="amt" style="font-size:16px">${eur(tot)}</div>
+            </div>
+            <div style="padding:10px 12px">${rows}</div>
+          </div>`;
+        }).join('');
+      })()}</div>
+    </div>`;
+}
+window.reassignDepense=async(id,devisId)=>{
+  if(!devisId) return;
+  try{ await db('depenses',{method:'PATCH',query:`?id=eq.${id}`,body:{devis_id:devisId}}); const x=S.depenses.find(d=>d.id===id); if(x)x.devis_id=devisId; viewCompta(); }
+  catch(e){ alert(e.message); }
+};
+window.delDepenseC=async(id)=>{
+  if(!confirm('Supprimer cette dépense ?')) return;
+  try{ await db('depenses',{method:'DELETE',query:`?id=eq.${id}`}); S.depenses=S.depenses.filter(x=>x.id!==id); viewCompta(); }
+  catch(e){ alert(e.message); }
+};
+
+function viewAnalyse(){
+  const hrs=S.heures||[];
+  const met={};
+  hrs.forEach(x=>{ const k=x.metier||'Autre'; const c=(+x.heures||0)*(+x.taux_horaire||0); (met[k]=met[k]||{h:0,c:0,n:0}); met[k].h+=(+x.heures||0); met[k].c+=c; met[k].n++; });
+  const metArr=Object.entries(met).sort((a,b)=>b[1].c-a[1].c);
+  const totH=metArr.reduce((s,[,v])=>s+v.h,0)||1;
+  const metRows=metArr.length?metArr.map(([k,v])=>{
+    const hue=clientHue(k); const pct=Math.round(v.h/totH*100);
+    return `<div class="ch-row" style="grid-template-columns:auto 1fr auto"><div class="ch-av" style="width:30px;height:30px;background:hsl(${hue},55%,50%)"></div><div><div class="nm">${esc(k)}</div><div class="mt">${v.h} h · ${v.n} saisie(s) · ${pct}% du temps</div><div style="height:6px;background:var(--bg-2);border-radius:20px;overflow:hidden;margin-top:6px;max-width:220px"><div style="height:100%;width:${pct}%;background:hsl(${hue},55%,50%)"></div></div></div><div class="amt">${eur(v.c)}</div></div>`;
+  }).join(''):`<div class="empty" style="padding:20px"><b>Pas encore de données</b>Saisis des heures dans les chantiers.</div>`;
+
+  const rows=S.devis.map(d=>{ const n=chantierNums(d); const pct=n.total?Math.round(n.marge/n.total*100):0; return {d,n,pct}; }).filter(r=>r.n.mat>0||r.n.mo>0).sort((a,b)=>b.pct-a.pct);
+  const chRows=rows.length?rows.map(r=>{
+    const hue=clientHue(r.d.numero||'');
+    return `<div class="ch-row" style="grid-template-columns:auto 1fr auto"><div class="ch-av" style="width:30px;height:30px;background:linear-gradient(135deg,hsl(${hue},55%,52%),hsl(${(hue+40)%360},50%,42%))">${esc((r.d.numero||'').slice(-2))}</div><div><div class="nm">${esc(r.d.clients?.nom||'—')} · ${esc(r.d.numero)}</div><div class="mt">Devis ${eur(r.n.total)} · Mat ${eur(r.n.mat)} · MO ${eur(r.n.mo)}</div></div><div class="amt" style="color:${r.n.marge>=0?'var(--ok)':'var(--bad)'}">${eur(r.n.marge)} <span style="font-size:12px;color:var(--muted)">(${r.pct}%)</span></div></div>`;
+  }).join(''):`<div class="empty" style="padding:20px"><b>Pas encore de chantiers chiffrés</b></div>`;
+
+  const totMat=S.depenses.reduce((s,x)=>s+(+x.montant||0),0);
+  const totMO=hrs.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const totDevis=rows.reduce((s,r)=>s+r.n.total,0)||1;
+  const margeMoy=rows.length?Math.round(rows.reduce((s,r)=>s+r.pct,0)/rows.length):0;
+
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Analyse</h2><span class="muted">apprentissage des coûts</span></div>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <div class="stat"><div class="k">Marge moyenne</div><div class="v num accent">${margeMoy}%</div><div class="sub">sur ${rows.length} chantier(s)</div></div>
+      <div class="stat"><div class="k">Part matériaux</div><div class="v num">${Math.round(totMat/totDevis*100)}%</div><div class="sub">du CA chiffré</div></div>
+      <div class="stat"><div class="k">Part main d'œuvre</div><div class="v num">${Math.round(totMO/totDevis*100)}%</div><div class="sub">du CA chiffré</div></div>
+      <div class="stat"><div class="k">Heures totales</div><div class="v num">${Math.round(totH)} h</div><div class="sub">toute la brigade</div></div>
+    </div>
+    <div class="panel ch-panel"><h3><span class="ci">👷</span> Temps &amp; coût par métier</h3><div style="margin-top:8px">${metRows}</div></div>
+    <div class="panel ch-panel"><h3><span class="ci">📊</span> Marge réelle par chantier</h3><div style="margin-top:8px">${chRows}</div>
+      <div style="font-size:11.5px;color:var(--faint);margin-top:10px">Ces moyennes t'aident à estimer un nouveau chantier similaire : compare matériaux et main d'œuvre à ton devis.</div>
+    </div>`;
+}
+
+function viewOuvriers(){
+  const cards=S.ouvriers.length?S.ouvriers.map(o=>{
+    const h=clientHue(o.nom||''); const hh=(S.heures||[]).filter(x=>x.ouvrier_id===o.id);
+    const th=hh.reduce((s,x)=>s+(+x.heures||0),0); const co=hh.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+    const paye=(S.paies||[]).filter(p=>p.ouvrier_id===o.id).reduce((s,p)=>s+(+p.montant||0),0);
+    const reste=Math.round((co-paye)*100)/100;
+    return `<div class="cl-card2" style="cursor:pointer" onclick="ouvrierFiche('${o.id}')">
+      <div class="cl-top"><div class="cl-ava" style="background:linear-gradient(135deg,hsl(${h},60%,55%),hsl(${(h+40)%360},58%,44%))">${esc(clientInitials(o.nom))}</div>
+        <div style="flex:1;min-width:0"><div class="cl-name">${esc(o.nom)}</div><span class="muted" style="font-size:12px">${esc(o.metier||'')}</span></div>
+        <span class="cl-badge ${reste>0.5?'bad':'ok'}">${reste>0.5?eur(reste)+' dû':'À jour'}</span></div>
+      <div class="cl-stats"><div><b>${eur(o.taux_horaire)}</b><span>€ / heure</span></div><div><b>${th}</b><span>heures</span></div><div><b>${eur(co)}</b><span>coût total</span></div></div>
+      <div class="cl-actions"><button class="btn sm" onclick="event.stopPropagation();ouvrierFiche('${o.id}')">Fiche paie</button><button class="btn ghost sm" onclick="event.stopPropagation();editOuvrier('${o.id}')">Modifier</button><button class="btn ghost sm" onclick="event.stopPropagation();delOuvrier('${o.id}')">Suppr.</button></div>
+    </div>`;
+  }).join(''):`<div class="empty" style="grid-column:1/-1"><b>Aucun ouvrier</b>Ajoute ton équipe pour suivre qui fait quoi sur chaque chantier.</div>`;
+  $('#view').innerHTML=`<div class="sec-head"><h2>Brigade</h2><button class="btn" onclick="editOuvrier()">+ Ouvrier</button></div><div class="clients-grid">${cards}</div>`;
+}
+window.ouvrierFiche=(id)=>{
+  const o=S.ouvriers.find(x=>x.id===id); if(!o){ go('ouvriers'); return; }
+  const hrs=(S.heures||[]).filter(x=>x.ouvrier_id===id);
+  const totH=hrs.reduce((s,x)=>s+(+x.heures||0),0);
+  const totC=hrs.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const groups={};
+  hrs.forEach(x=>{ const k=x.devis_id||'none'; (groups[k]=groups[k]||[]).push(x); });
+  const blocks=Object.keys(groups).length?Object.entries(groups).map(([k,list])=>{
+    const dv=k!=='none'?S.devis.find(d=>d.id===k):null;
+    const gH=list.reduce((s,x)=>s+(+x.heures||0),0);
+    const gC=list.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+    const hue=clientHue(dv?dv.numero:'sans');
+    const title=dv?`${esc(dv.numero)} — ${esc(dv.clients?.nom||'')}`:'Sans chantier';
+    const rows=list.slice().sort((a,b)=>(b.date_h||'').localeCompare(a.date_h||'')).map(x=>`<div class="ch-row" style="grid-template-columns:1fr auto auto"><div><div class="nm">${fdate(x.date_h)}</div><div class="mt">${x.metier?esc(x.metier)+' · ':''}${x.description?esc(x.description)+' · ':''}${(+x.heures||0)} h × ${eur(x.taux_horaire)}</div></div><div class="amt">${eur((+x.heures||0)*(+x.taux_horaire||0))}</div><div></div></div>`).join('');
+    return `<div style="border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line)">
+        <div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},55%,52%),hsl(${(hue+40)%360},50%,42%))">${dv?esc((dv.numero||'').slice(-2)):'—'}</div><div><div class="nm">${title}</div><div class="mt">${gH} h</div></div></div>
+        <div class="amt" style="font-size:16px">${eur(gC)}</div>
+      </div>
+      <div style="padding:10px 12px">${rows}</div>
+    </div>`;
+  }).join(''):`<div class="empty" style="padding:20px"><b>Aucune heure pour cet ouvrier</b></div>`;
+  const paies=(S.paies||[]).filter(p=>p.ouvrier_id===id).slice().sort((a,b)=>(b.date_paie||'').localeCompare(a.date_paie||''));
+  const paye=paies.reduce((s,p)=>s+(+p.montant||0),0);
+  const reste=Math.round((totC-paye)*100)/100;
+  const paieRows=paies.length?paies.map(p=>`<div class="ch-row" style="grid-template-columns:1fr auto auto"><div><div class="nm">${eur(p.montant)}</div><div class="mt">${fdate(p.date_paie)}${p.note?' · '+esc(p.note):''}</div></div><div></div><button class="x" onclick="delPaie('${p.id}')">✕</button></div>`).join(''):`<div class="empty" style="padding:16px"><b>Aucun paiement</b></div>`;
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Fiche paie — ${esc(o.nom)}</h2><button class="btn ghost" onclick="go('ouvriers')">← Retour</button></div>
+    <p style="color:var(--muted);font-size:13px;margin:-6px 0 16px">${esc(o.metier||'')} · ${eur(o.taux_horaire)}/h · ${totH} h · ${Object.keys(groups).length} chantier(s)</p>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="stat"><div class="k">Gagné (total)</div><div class="v num">${eur(totC)}</div></div>
+      <div class="stat"><div class="k">Déjà payé</div><div class="v num" style="color:var(--ok)">${eur(paye)}</div><div class="sub">${paies.length} versement(s)</div></div>
+      <div class="stat"><div class="k">Reste à payer</div><div class="v num" style="color:${reste>0.5?'var(--accent-soft)':'var(--ok)'}">${eur(reste>0?reste:0)}</div><div class="sub">${reste<=0.5?'à jour ✓':'à régler'}</div></div>
+    </div>
+    <div id="pm-msg"></div>
+    <div class="panel ch-panel"><h3><span class="ci">💸</span> Enregistrer un paiement</h3>
+      <div class="grid2"><label class="fld"><span>Montant (€)</span><input class="inp" id="pm-mt" type="number" step="0.01" placeholder="${reste>0?reste:0}"></label><label class="fld"><span>Date</span><input class="inp" id="pm-date" type="date" value="${today()}"></label></div>
+      <label class="fld"><span>Note (optionnel)</span><input class="inp" id="pm-note" placeholder="Ex : espèces, virement, semaine 39"></label>
+      <div class="editor-actions"><button class="btn ghost" onclick="payerReste('${id}',${reste>0?reste:0})">Payer le reste (${eur(reste>0?reste:0)})</button><button class="btn" id="pm-add" onclick="addPaie('${id}')">Enregistrer</button></div>
+      <div style="margin-top:14px">${paieRows}</div>
+    </div>
+    <div class="panel ch-panel"><h3><span class="ci">🧾</span> Détail des heures par chantier</h3><div style="margin-top:8px">${blocks}</div></div>`;
+};
+window.addPaie=async(ouvrierId)=>{
+  const mt=parseFloat($('#pm-mt').value)||0, dt=$('#pm-date').value||today(), note=$('#pm-note').value.trim()||null;
+  if(mt<=0){ $('#pm-msg').innerHTML='<div class="msg err">Indiquez un montant.</div>'; return; }
+  const btn=$('#pm-add'); btn.disabled=true; btn.textContent='…';
+  try{ const r=await db('paies',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,ouvrier_id:ouvrierId,montant:Math.round(mt*100)/100,date_paie:dt,note}}); S.paies.unshift(r[0]); ouvrierFiche(ouvrierId); }
+  catch(e){ $('#pm-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Enregistrer'; }
+};
+window.payerReste=(ouvrierId,reste)=>{ if(reste<=0){ alert('Rien à payer.'); return; } const el=$('#pm-mt'); if(el){ el.value=reste; } addPaie(ouvrierId); };
+window.delPaie=async(id)=>{ if(!confirm('Supprimer ce paiement ?'))return; const p=S.paies.find(x=>x.id===id); try{ await db('paies',{method:'DELETE',query:`?id=eq.${id}`}); S.paies=S.paies.filter(x=>x.id!==id); if(p) ouvrierFiche(p.ouvrier_id); }catch(e){alert(e.message);} };
+window.editOuvrier=(id)=>{
+  const o=id?S.ouvriers.find(x=>x.id===id):{metier:'Peintre'};
+  let daysBlock='';
+  if(id){
+    const hrs=(S.heures||[]).filter(x=>x.ouvrier_id===id).slice().sort((a,b)=>(b.date_h||'').localeCompare(a.date_h||''));
+    const devOpts=S.devis.map(d=>`<option value="${d.id}">${esc(d.numero)} — ${esc(d.clients?.nom||'')}</option>`).join('');
+    const rows=hrs.length?hrs.map(x=>{ const dv=S.devis.find(d=>d.id===x.devis_id); return `<div class="ch-row" style="grid-template-columns:1fr auto auto"><div><div class="nm">${fdate(x.date_h)} · ${(+x.heures||0)} h</div><div class="mt">${dv?esc(dv.numero):'Sans chantier'}${x.description?' · '+esc(x.description):''} · ${eur(x.taux_horaire)}/h</div></div><div class="amt">${eur((+x.heures||0)*(+x.taux_horaire||0))}</div><button class="x" onclick="delHeureOuv('${x.id}','${id}')">✕</button></div>`;}).join(''):`<div class="empty" style="padding:16px"><b>Aucun jour saisi</b></div>`;
+    daysBlock=`<div class="panel ch-panel"><h3><span class="ci">📅</span> Jours / heures</h3>
+      <div class="grid2"><label class="fld"><span>Chantier</span><select class="inp" id="od-dev"><option value="">— Choisir le chantier —</option>${devOpts}</select></label><label class="fld"><span>Date</span><input class="inp" id="od-date" type="date" value="${today()}"></label></div>
+      <div class="grid2"><label class="fld"><span>Heures</span><input class="inp" id="od-h" type="number" step="0.5" placeholder="Ex : 8"></label><label class="fld"><span>Détail (optionnel)</span><input class="inp" id="od-desc" placeholder="Ex : carrelage sol"></label></div>
+      <div class="editor-actions"><button class="btn" onclick="addHeureOuv('${id}')">+ Ajouter ce jour</button></div>
+      <div style="margin-top:14px">${rows}</div>
+    </div>`;
+  }
+  $('#view').innerHTML=`<div class="sec-head"><h2>${id?"Modifier l'ouvrier":'Nouvel ouvrier'}</h2><button class="btn ghost" onclick="go('ouvriers')">← Retour</button></div><div id="ov-msg"></div><div class="panel">
+    <label class="fld"><span>Nom</span><input class="inp" id="ov-nom" value="${esc(o.nom||'')}" placeholder="Ex : Ivan"></label>
+    <div class="grid2"><label class="fld"><span>Métier</span><select class="inp" id="ov-metier">${METIERS.map(m=>`<option ${o.metier===m?'selected':''}>${m}</option>`).join('')}</select></label>
+    <label class="fld"><span>Taux horaire (€)</span><input class="inp" id="ov-taux" type="number" step="0.5" value="${o.taux_horaire??''}" placeholder="Ex : 30"></label></div>
+    <div class="editor-actions"><button class="btn" id="ov-save">Enregistrer</button></div></div>
+    ${daysBlock}`;
+  $('#ov-save').onclick=async()=>{
+    const nom=$('#ov-nom').value.trim(); if(!nom){$('#ov-msg').innerHTML='<div class="msg err">Le nom est requis.</div>';return;}
+    const btn=$('#ov-save');btn.disabled=true;btn.textContent='…';
+    const body={nom,metier:$('#ov-metier').value,taux_horaire:parseFloat($('#ov-taux').value)||0};
+    try{ if(id){const r=await db('ouvriers',{method:'PATCH',query:`?id=eq.${id}`,prefer:'return=representation',body});Object.assign(S.ouvriers.find(x=>x.id===id),r[0]);}
+      else{body.company_id=S.company.id;const r=await db('ouvriers',{method:'POST',prefer:'return=representation',body});S.ouvriers.push(r[0]);}
+      go('ouvriers'); }catch(e){$('#ov-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`;btn.disabled=false;btn.textContent='Enregistrer';}
+  };
+};
+window.addHeureOuv=async(ouvrierId)=>{
+  const o=S.ouvriers.find(x=>x.id===ouvrierId); if(!o)return;
+  const devId=$('#od-dev').value, dt=$('#od-date').value||today(), hh=parseFloat($('#od-h').value)||0, desc=$('#od-desc').value.trim()||null;
+  if(!devId){ $('#ov-msg').innerHTML='<div class="msg err">Choisissez le chantier.</div>'; window.scrollTo(0,0); return; }
+  if(!hh){ $('#ov-msg').innerHTML='<div class="msg err">Indiquez les heures.</div>'; window.scrollTo(0,0); return; }
+  try{ const r=await db('heures',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:devId,ouvrier_id:ouvrierId,metier:o.metier||null,description:desc,date_h:dt,heures:hh,taux_horaire:+o.taux_horaire||0}}); S.heures.unshift(r[0]); editOuvrier(ouvrierId); }
+  catch(e){ $('#ov-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; }
+};
+window.delHeureOuv=async(id,ouvrierId)=>{ if(!confirm('Supprimer ce jour ?'))return; try{ await db('heures',{method:'DELETE',query:`?id=eq.${id}`}); S.heures=S.heures.filter(x=>x.id!==id); editOuvrier(ouvrierId); }catch(e){alert(e.message);} };
+window.delOuvrier=async(id)=>{ if(!confirm('Supprimer cet ouvrier ?'))return; try{ await db('ouvriers',{method:'DELETE',query:`?id=eq.${id}`}); S.ouvriers=S.ouvriers.filter(x=>x.id!==id); viewOuvriers(); }catch(e){alert(e.message);} };
+window.hrPickOuvrier=()=>{ const sel=$('#hr-ouv'); if(!sel)return; const opt=sel.options[sel.selectedIndex]; if(!opt||!opt.value)return; const taux=opt.getAttribute('data-taux'); const met=opt.getAttribute('data-metier'); if(taux&&+taux>0)$('#hr-t').value=+taux; if(met){ const ms=$('#hr-metier'); if(ms)[...ms.options].forEach(o=>{ if(o.text===met||o.value===met) ms.value=o.value; }); } };
+
+function chantierNums(d){
+  const mat=S.depenses.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.montant||0),0);
+  const mo=S.heures.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const total=+d.total||0; return {mat,mo,total,marge:total-mat-mo};
+}
+function viewChantiers(){
+  const list=S.devis;
+  const cards=list.length?list.map(d=>{
+    const n=chantierNums(d); const av=+d.avancement||0; const ph=S.photos.filter(p=>p.devis_id===d.id).length;
+    const h=clientHue(d.numero||'');
+    return `<div class="cl-card2" style="cursor:pointer" onclick="openDepenses('${d.id}')">
+      <div class="cl-top">
+        <div class="cl-ava" style="background:linear-gradient(135deg,hsl(${h},60%,55%),hsl(${(h+40)%360},58%,44%))">${esc((d.numero||'--').slice(-2))}</div>
+        <div style="flex:1;min-width:0"><div class="cl-name">${esc(d.clients?.nom||'—')}</div><span class="muted" style="font-size:12px">${esc(d.numero)}</span></div>
+        <span class="cl-badge ${n.marge>=0?'ok':'bad'}">${eur(n.marge)}</span>
+      </div>
+      <div style="margin:8px 0 12px"><div style="height:8px;background:var(--bg-2);border-radius:20px;overflow:hidden"><div style="height:100%;width:${av}%;background:linear-gradient(90deg,var(--accent-soft),var(--accent))"></div></div><div style="font-size:11px;color:var(--faint);margin-top:4px">Avancement ${av}% · 📷 ${ph}</div></div>
+      <div class="cl-stats"><div><b>${eur(n.total)}</b><span>Devis</span></div><div><b>${eur(n.mat)}</b><span>Matériaux</span></div><div><b>${eur(n.mo)}</b><span>Main d'œuvre</span></div></div>
+    </div>`;
+  }).join(''):`<div class="empty" style="grid-column:1/-1"><b>Aucun chantier</b>Créez un devis pour démarrer un chantier.</div>`;
+  $('#view').innerHTML=`<div class="sec-head"><h2>Chantiers</h2><button class="btn" onclick="newDevis()">+ Nouveau</button></div><div class="clients-grid">${cards}</div>`;
+}
+
+/* ---- DÉPENSES / CHANTIER ---- */
+let _depDevis=null;
+window.openDepenses=(devisId)=>{ _depDevis=devisId; viewDepenses(); window.scrollTo(0,0); };
+function viewDepenses(){
+  const d=S.devis.find(x=>x.id===_depDevis); if(!d){ go('chantiers'); return; }
+  const deps=S.depenses.filter(x=>x.devis_id===_depDevis);
+  const hrs=S.heures.filter(x=>x.devis_id===_depDevis);
+  const phs=S.photos.filter(x=>x.devis_id===_depDevis);
+  const mat=deps.reduce((s,x)=>s+(+x.montant||0),0);
+  const mo=hrs.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  const totalH=hrs.reduce((s,x)=>s+(+x.heures||0),0);
+  const total=+d.total||0; const marge=total-mat-mo; const av=+d.avancement||0;
+  const matRows=deps.length?deps.map(x=>`<div class="ch-row"><div><div class="nm">${esc(x.libelle)}${x.justificatif_url?` <a href="${esc(x.justificatif_url)}" target="_blank" style="color:var(--accent-soft);font-size:12px">🧾</a>`:''}</div><div class="mt">${fdate(x.date_depense)}</div></div><div class="amt">${eur(x.montant)}</div><button class="x" onclick="delDepense('${x.id}')">✕</button></div>`).join(''):`<div class="empty" style="padding:20px"><b>Aucun matériau</b></div>`;
+  const ouvOpts=(S.ouvriers||[]).map(o=>`<option value="${o.id}">${esc(o.nom)}</option>`).join('');
+  const hrRows=hrs.length?hrs.map(x=>{
+    const ov=(S.ouvriers||[]).find(o=>o.id===x.ouvrier_id);
+    const who=ov?ov.nom:(x.metier||"Main d'œuvre");
+    const hue=clientHue(who); const sub=[x.metier,x.description].filter(Boolean).join(' · ');
+    const assign=(!ov&&(S.ouvriers||[]).length)?`<select class="inp" style="padding:5px 8px;font-size:11px;max-width:150px" onchange="assignHeure('${x.id}',this.value)"><option value="">↪ Attribuer à…</option>${ouvOpts}</select>`:'';
+    return `<div class="ch-row" style="grid-template-columns:1fr auto auto auto"><div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${hue},60%,55%),hsl(${(hue+40)%360},58%,44%))">${esc(clientInitials(who))}</div><div><div class="nm">${esc(who)}</div><div class="mt">${sub?esc(sub)+' · ':''}${(+x.heures||0)} h × ${eur(x.taux_horaire)} · ${fdate(x.date_h)}</div></div></div><div>${assign}</div><div class="amt">${eur((+x.heures||0)*(+x.taux_horaire||0))}</div><button class="x" onclick="delHeure('${x.id}')">✕</button></div>`;
+  }).join(''):`<div class="empty" style="padding:20px"><b>Aucune heure saisie</b></div>`;
+  const byMet={}; hrs.forEach(x=>{ const k=x.metier||'Autre'; const c=(+x.heures||0)*(+x.taux_horaire||0); (byMet[k]=byMet[k]||{h:0,c:0}); byMet[k].h+=(+x.heures||0); byMet[k].c+=c; });
+  const metierBreak=Object.keys(byMet).length?`<div class="metier-chips">${Object.entries(byMet).map(([k,v])=>`<span class="metier-chip"><span class="dot" style="background:hsl(${clientHue(k)},60%,55%)"></span><b>${esc(k)}</b> · ${v.h} h · ${eur(v.c)}</span>`).join('')}</div>`:'';
+  const byWho={};
+  const _norm=s=>(s||'').toString().trim().toLowerCase();
+  hrs.forEach(x=>{
+    const ov=(S.ouvriers||[]).find(o=>o.id===x.ouvrier_id);
+    let name=null;
+    if(ov) name=ov.nom;
+    else {
+      const txt=_norm(x.description)+' '+_norm(x.metier);
+      const match=(S.ouvriers||[]).find(o=>txt.includes(_norm(o.nom)));
+      name = match ? match.nom : (x.metier||x.description||'Sans nom');
+    }
+    const key=_norm(name);
+    const c=(+x.heures||0)*(+x.taux_horaire||0);
+    (byWho[key]=byWho[key]||{label:name,h:0,c:0,hue:clientHue(name)});
+    byWho[key].h+=(+x.heures||0); byWho[key].c+=c;
+  });
+  const whoArr=Object.values(byWho).sort((a,b)=>b.c-a.c);
+  const whoSummary=whoArr.length?`<div style="display:grid;gap:8px;margin-bottom:14px">${whoArr.map(v=>`<div class="ch-row"><div style="display:flex;align-items:center;gap:11px"><div class="ch-av" style="background:linear-gradient(135deg,hsl(${v.hue},60%,55%),hsl(${(v.hue+40)%360},58%,44%))">${esc(clientInitials(v.label))}</div><div><div class="nm">${esc(v.label)}</div><div class="mt">${v.h} h au total</div></div></div><div class="amt" style="font-size:16px;color:var(--accent-soft)">${eur(v.c)}</div><div></div></div>`).join('')}</div>`:'';
+  const gallery=phs.length?`<div class="photo-grid">${phs.map(p=>`<div class="photo-cell"><a href="${esc(p.url)}" target="_blank"><img src="${esc(p.url)}"></a><button class="photo-del" onclick="delPhoto('${p.id}')">✕</button></div>`).join('')}</div>`:`<div class="empty" style="padding:20px"><b>Aucune photo</b>Ajoutez des photos avant/après.</div>`;
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Chantier — ${esc(d.numero)}</h2><button class="btn ghost" onclick="go('chantiers')">← Retour</button></div>
+    <p style="color:var(--muted);font-size:13px;margin:-6px 0 16px">Client : ${esc(d.clients?.nom||'—')}</p>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="stat"><div class="k">Devis</div><div class="v num">${eur(total)}</div></div>
+      <div class="stat"><div class="k">Matériaux</div><div class="v num">${eur(mat)}</div></div>
+      <div class="stat"><div class="k">Main d'œuvre</div><div class="v num">${eur(mo)}</div><div class="sub">${totalH} h</div></div>
+      <div class="stat"><div class="k">Marge nette</div><div class="v num" style="color:${marge>=0?'var(--ok)':'var(--bad)'}">${eur(marge)}</div><div class="sub">devis − matériaux − MO</div></div>
+    </div>
+    <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Avancement du chantier</b><span class="muted" id="av-val">${av}%</span></div>
+      <input type="range" min="0" max="100" step="5" value="${av}" style="width:100%" oninput="document.getElementById('av-val').textContent=this.value+'%'" onchange="setAvancement('${d.id}',this.value)">
+      <div style="height:8px;background:var(--bg-2);border-radius:20px;overflow:hidden;margin-top:8px"><div style="height:100%;width:${av}%;background:linear-gradient(90deg,var(--accent-soft),var(--accent))"></div></div></div>
+    <div id="dp-msg"></div>
+    <div class="panel ch-panel">
+      <h3><span class="ci">🧱</span> Matériaux / dépenses</h3>
+      <div class="grid2"><label class="fld"><span>Libellé</span><input class="inp" id="dp-lib" placeholder="Ex : Peinture 15L"></label><label class="fld"><span>Montant</span><input class="inp" id="dp-m" type="number" step="0.01" placeholder="0"></label></div>
+      <div class="grid2"><label class="fld"><span>Date</span><input class="inp" id="dp-date" type="date" value="${today()}"></label><label class="fld"><span>Photo du reçu (optionnel)</span><input class="inp" id="dp-file" type="file" accept="image/*" capture="environment"></label></div>
+      <div class="editor-actions"><button class="btn" id="dp-add" onclick="addDepense()">Ajouter</button></div>
+      <div style="margin-top:14px">${matRows}</div>
+    </div>
+    <div class="panel ch-panel">
+      <h3><span class="ci">👷</span> Main d'œuvre — journal (qui fait quoi)</h3>
+      <div class="grid2">
+        <label class="fld"><span>Ouvrier</span><select class="inp" id="hr-ouv" onchange="hrPickOuvrier()"><option value="">— Sans ouvrier —</option>${(S.ouvriers||[]).map(o=>`<option value="${o.id}" data-taux="${o.taux_horaire||0}" data-metier="${esc(o.metier||'')}">${esc(o.nom)}${o.metier?' ('+esc(o.metier)+')':''}</option>`).join('')}</select></label>
+        <label class="fld"><span>Métier / tâche</span><select class="inp" id="hr-metier">${METIERS.map(m=>`<option>${m}</option>`).join('')}</select></label>
+      </div>
+      <div class="grid2"><label class="fld"><span>Détail (optionnel)</span><input class="inp" id="hr-desc" placeholder="Ex : démolition mur cuisine"></label><label class="fld"><span>Date</span><input class="inp" id="hr-date" type="date" value="${today()}"></label></div>
+      <div class="grid2"><label class="fld"><span>Heures</span><input class="inp" id="hr-h" type="number" step="0.5" placeholder="0"></label><label class="fld"><span>Taux horaire (€)</span><input class="inp" id="hr-t" type="number" step="0.5" placeholder="Ex : 35" value="${S.company.taux_horaire||''}"></label></div>
+      <div class="editor-actions"><button class="btn" id="hr-add" onclick="addHeure()">Ajouter au journal</button></div>
+      ${whoArr.length?`<div style="margin-top:16px;font-size:12px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-weight:600">À payer par ouvrier</div>${whoSummary}`:''}
+      ${metierBreak}
+      <div style="font-size:12px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-top:4px">Détail jour par jour</div>
+      <div style="margin-top:8px">${hrRows}</div>
+    </div>
+    <div class="panel ch-panel">
+      <h3><span class="ci">📷</span> Photos du chantier</h3>
+      <input class="inp" id="ph-file" type="file" accept="image/*" capture="environment" multiple>
+      <div class="editor-actions"><button class="btn" id="ph-add" onclick="addPhoto()">Ajouter</button></div>
+      <div style="margin-top:12px">${gallery}</div>
+    </div>`;
+}
+window.setAvancement=async(id,val)=>{ try{ await db('devis',{method:'PATCH',query:`?id=eq.${id}`,body:{avancement:+val}}); const d=S.devis.find(x=>x.id===id); if(d)d.avancement=+val; }catch(e){} };
+window.addHeure=async()=>{
+  const ouvrier_id=$('#hr-ouv')?.value||null, metier=$('#hr-metier')?.value||null;
+  const desc=$('#hr-desc').value.trim(), dt=$('#hr-date').value||today(), h=parseFloat($('#hr-h').value)||0, t=parseFloat($('#hr-t').value)||0;
+  if(!h){ $('#dp-msg').innerHTML='<div class="msg err">Indiquez les heures.</div>'; return; }
+  const btn=$('#hr-add'); btn.disabled=true; btn.textContent='…';
+  try{ const r=await db('heures',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:_depDevis,ouvrier_id:ouvrier_id||null,metier:metier||null,description:desc||null,date_h:dt,heures:h,taux_horaire:t}}); S.heures.unshift(r[0]); viewDepenses(); }
+  catch(e){ $('#dp-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter au journal'; }
+};
+window.delHeure=async(id)=>{ try{ await db('heures',{method:'DELETE',query:`?id=eq.${id}`}); S.heures=S.heures.filter(x=>x.id!==id); viewDepenses(); }catch(e){} };
+window.assignHeure=async(id,ouvrierId)=>{
+  if(!ouvrierId) return;
+  const o=S.ouvriers.find(x=>x.id===ouvrierId); if(!o) return;
+  const body={ouvrier_id:ouvrierId, metier:o.metier||null};
+  try{ await db('heures',{method:'PATCH',query:`?id=eq.${id}`,body}); const x=S.heures.find(h=>h.id===id); if(x){x.ouvrier_id=ouvrierId; x.metier=o.metier||x.metier;} viewDepenses(); }
+  catch(e){ alert(e.message); }
+};
+window.addPhoto=async()=>{
+  const el=$('#ph-file'); const files=el&&el.files?Array.from(el.files):[];
+  if(!files.length){ $('#dp-msg').innerHTML='<div class="msg err">Choisissez une photo.</div>'; return; }
+  const btn=$('#ph-add'); btn.disabled=true; btn.textContent='Envoi…';
+  try{ for(const f of files){ const url=await uploadFile(f); const r=await db('chantier_photos',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:_depDevis,url}}); S.photos.unshift(r[0]); } viewDepenses(); }
+  catch(e){ $('#dp-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter'; }
+};
+window.delPhoto=async(id)=>{ if(!confirm('Supprimer cette photo ?'))return; try{ await db('chantier_photos',{method:'DELETE',query:`?id=eq.${id}`}); S.photos=S.photos.filter(x=>x.id!==id); viewDepenses(); }catch(e){} };
+window.addDepense=async()=>{
+  const lib=$('#dp-lib').value.trim(), m=parseFloat($('#dp-m').value)||0, dt=$('#dp-date').value||today();
+  if(!lib||!m){ $('#dp-msg').innerHTML='<div class="msg err">Indiquez un libellé et un montant.</div>'; return; }
+  const btn=$('#dp-add'); btn.disabled=true; btn.textContent='Enregistrement…';
+  const fileEl=$('#dp-file'); const file=fileEl&&fileEl.files&&fileEl.files[0];
   try{
-    await db('factures',{method:'POST',prefer:'return=representation',body:{
-      company_id:S.company.id,numero:`FAC-${y}-${seq}`,devis_id:devisId,client_id:d.client_id,
-      date_facture:today(),statut:'creee',total:d.total,montant_paye:0}});
-    await loadData(); go('factures');
+    let url=null;
+    if(file){ btn.textContent='Envoi de la photo…'; url=await uploadFile(file); }
+    const r=await db('depenses',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,devis_id:_depDevis,libelle:lib,montant:m,date_depense:dt,justificatif_url:url}});
+    S.depenses.unshift(r[0]); viewDepenses();
+  }catch(e){ $('#dp-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter'; }
+};
+window.delDepense=async(id)=>{
+  try{ await db('depenses',{method:'DELETE',query:`?id=eq.${id}`}); S.depenses=S.depenses.filter(x=>x.id!==id); viewDepenses(); }catch(e){}
+};
+
+/* ---- FACTURES ---- */
+function nextNum(prefix, list){
+  const y=new Date().getFullYear();
+  let max=0;
+  (list||[]).forEach(o=>{ const m=(o.numero||'').match(/-(\d+)$/); if(m){ const n=+m[1]; if(n>max) max=n; } });
+  return `${prefix}-${y}-${String(max+1).padStart(3,'0')}`;
+}
+function factureRestant(devisId){
+  const d=S.devis.find(x=>x.id===devisId); const tot=+((d&&d.total)||0);
+  const dejafac=S.factures.filter(f=>f.devis_id===devisId).reduce((s,f)=>s+(+f.total||0),0);
+  return {tot, dejafac, restant:Math.max(0,Math.round((tot-dejafac)*100)/100)};
+}
+window.createFacture=(devisId)=>{
+  const d=S.devis.find(x=>x.id===devisId); if(!d)return;
+  const r=factureRestant(devisId);
+  const ac=(+d.acompte_pct||0)>0? Math.round(r.tot*(+d.acompte_pct)/100*100)/100 : 0;
+  const el=$('#fmodal'); el.classList.remove('hidden');
+  el.innerHTML=`<div style="max-width:470px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 30px 90px rgba(0,0,0,.55)">
+    <h3 style="margin:0 0 4px">Créer une facture — ${esc(d.numero)}</h3>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Total devis (HT) : ${eur(r.tot)}<br>Déjà facturé : ${eur(r.dejafac)} · Restant : <b style="color:var(--accent-soft)">${eur(r.restant)}</b></p>
+    <div style="display:grid;gap:8px">
+      ${(ac>0&&ac<=r.restant)?`<button class="btn ghost" style="justify-content:space-between" onclick="doFacture('${devisId}',${ac},'acompte')"><span>Acompte prévu ${+d.acompte_pct} %</span><b>${eur(ac)}</b></button>`:''}
+      ${r.restant>0?`<button class="btn ghost" style="justify-content:space-between" onclick="doFacture('${devisId}',${r.restant},'${r.dejafac>0?'solde':'complete'}')"><span>${r.dejafac>0?'Solde restant':'Total du devis'}</span><b>${eur(r.restant)}</b></button>`:'<div style="color:var(--ok);font-size:13px;text-align:center;padding:6px">Devis entièrement facturé ✓</div>'}
+      <div style="border-top:1px solid var(--line);margin:6px 0 2px;padding-top:12px">
+        <div class="grid2">
+          <label class="fld"><span>Montant (€ HT)</span><input class="inp" id="fm-eur" type="number" step="0.01" placeholder="0" oninput="fmSync('eur',${r.tot})"></label>
+          <label class="fld"><span>= Pourcentage</span><input class="inp" id="fm-pct" type="number" step="0.1" placeholder="0" oninput="fmSync('pct',${r.tot})"></label>
+        </div>
+        <div id="fm-info" style="font-size:12px;color:var(--faint);margin:-4px 0 10px">Saisis un montant OU un %, l'autre se calcule tout seul.</div>
+        <button class="btn block" onclick="doFactureCustom('${devisId}',${r.restant})">Créer cette facture</button>
+      </div>
+    </div>
+    <div style="text-align:right;margin-top:12px"><button class="btn ghost sm" onclick="closeFModal()">Annuler</button></div>
+  </div>`;
+};
+window.fmSync=(from,tot)=>{
+  const e=$('#fm-eur'), p=$('#fm-pct'), info=$('#fm-info');
+  if(from==='eur'){ const v=parseFloat(e.value)||0; p.value=tot?(Math.round(v/tot*1000)/10):0; }
+  else{ const v=parseFloat(p.value)||0; e.value=Math.round(tot*v/100*100)/100; }
+  const val=parseFloat(e.value)||0;
+  if(info) info.textContent = val>0 ? `${eur(val)} = ${p.value||0}% du devis` : "Saisis un montant OU un %, l'autre se calcule tout seul.";
+};
+window.closeFModal=()=>{ $('#fmodal').classList.add('hidden'); $('#fmodal').innerHTML=''; };
+window.doFactureCustom=(devisId,restant)=>{
+  const v=parseFloat($('#fm-eur').value)||0;
+  if(v<=0){ alert('Indique un montant ou un %.'); return; }
+  if(restant!=null && v>restant+0.5){ if(!confirm(`Ce montant (${eur(v)}) dépasse le restant à facturer (${eur(restant)}). Continuer quand même ?`)) return; }
+  const d=S.devis.find(x=>x.id===devisId); const dejafac=factureRestant(devisId).dejafac;
+  doFacture(devisId,v,dejafac>0?'solde':'acompte');
+};
+window.doFacture=async(devisId,montant,type)=>{
+  const d=S.devis.find(x=>x.id===devisId); if(!d)return;
+  const body={company_id:S.company.id,numero:nextNum('FAC',S.factures),devis_id:devisId,client_id:d.client_id,date_facture:today(),statut:'creee',total:Math.round(montant*100)/100,montant_paye:0,type:type||'normale'};
+  try{
+    try{ await db('factures',{method:'POST',prefer:'return=representation',body}); }
+    catch(err){ if(String(err.message||'').includes('duplicate')){ await loadData(); body.numero=nextNum('FAC',S.factures); await db('factures',{method:'POST',prefer:'return=representation',body}); } else throw err; }
+    closeFModal(); await loadData(); go('factures');
   }catch(e){ alert(e.message); }
 };
 window.setFacturePaid = async (id)=>{
@@ -594,6 +1464,12 @@ window.setFactureUnpaid = async (id)=>{
   await db('factures',{method:'PATCH',query:`?id=eq.${id}`,body:{statut:'impayee'}});
   const f=S.factures.find(x=>x.id===id); if(f)f.statut='impayee'; viewFactures();
 };
+window.delFacture = async (id)=>{
+  const f=S.factures.find(x=>x.id===id);
+  if(!confirm(`Supprimer la facture ${f?f.numero:''} ?\nCette action est définitive.`)) return;
+  try{ await db('factures',{method:'DELETE',query:`?id=eq.${id}`}); S.factures=S.factures.filter(x=>x.id!==id); viewFactures(); }
+  catch(e){ alert(e.message); }
+};
 function viewFactures(){
   const fac=S.factures;
   const totFac=fac.reduce((s,f)=>s+(+f.total||0),0);
@@ -604,7 +1480,7 @@ function viewFactures(){
     <div class="list-head"><div>Numéro</div><div class="c">Client</div><div class="d">Date</div><div>Paiement</div><div class="t">Total</div></div>
     ${fac.map(f=>`
       <div class="row">
-        <div class="n">${esc(f.numero)}</div>
+        <div class="n">${esc(f.numero)}${f.type==='acompte'?' <span class="evtag">Acompte</span>':(f.type==='solde'?' <span class="evtag">Solde</span>':'')}</div>
         <div class="c">${esc(f.clients?.nom||'—')}</div>
         <div class="d" style="color:var(--faint)">${fdate(f.date_facture)}</div>
         <div><span class="chip ${f.statut}">${labels[f.statut]||f.statut}</span></div>
@@ -614,6 +1490,7 @@ function viewFactures(){
             ${f.statut!=='payee'
               ? `<button class="btn sm" onclick="setFacturePaid('${f.id}')">Payée</button>`
               : `<button class="btn ghost sm" onclick="setFactureUnpaid('${f.id}')">Annuler paiement</button>`}
+            <button class="btn ghost sm" onclick="delFacture('${f.id}')">Suppr.</button>
           </div>
         </div>
       </div>`).join('')}`
@@ -629,123 +1506,167 @@ function viewFactures(){
 }
 window.openFacture = id=>{
   const f=S.factures.find(x=>x.id===id); if(!f)return;
-  const co=S.company;
-  const dv=S.devis.find(x=>x.id===f.devis_id);
-  const lignes=(dv?.devis_lignes||[]).sort((a,b)=>a.ordre-b.ordre);
-  const rows=lignes.length
-    ? lignes.map(l=>`<tr><td><div class="cat">${esc(l.categorie)}</div>${ligneDetail(l)}</td><td class="r"><span class="mont">${eur(l.montant)}</span></td></tr>`).join('')
-    : `<tr><td><div class="cat">Prestation</div>${dv?`<div class="desc">Selon devis ${esc(dv.numero)}</div>`:''}</td><td class="r"><span class="mont">${eur(f.total)}</span></td></tr>`;
-  const legal = co.tva_applicable ? `TVA incluse selon la réglementation en vigueur.` : `TVA non applicable, art. 293 B du CGI.`;
-  const paid = f.statut==='payee';
-  $('#doc-wrap').innerHTML = `
-    <div class="doc-toolbar">
-      <button class="btn ghost sm" onclick="closeDoc()">Fermer</button>
-      <button class="btn sm" onclick="window.print()">Imprimer / PDF</button>
-    </div>
-    <div class="doc">
-      <div class="doc-top">
-        <div>
-          <div class="doc-brand">${esc(co.nom||'')}</div>
-          <div class="doc-co">
-            ${co.adresse?esc(co.adresse)+'<br>':''}
-            ${co.telephone?'Tél : '+esc(co.telephone)+'<br>':''}
-            ${co.email?esc(co.email)+'<br>':''}
-            ${co.siret?'SIRET : '+esc(co.siret):''}
-          </div>
-        </div>
-        <div class="doc-meta">
-          <div class="big">FACTURE</div>
-          <div>${esc(f.numero)}</div>
-          <div>${fdate(f.date_facture)}</div>
-          ${dv?`<div style="margin-top:4px">Réf. devis ${esc(dv.numero)}</div>`:''}
-        </div>
-      </div>
-      <div class="doc-parties">
-        <div>${paid?'<span class="doc-stamp">PAYÉE</span>':''}</div>
-        <div class="to"><div class="lab">Client</div><b>${esc(f.clients?.nom||'')}</b></div>
-      </div>
-      <table>
-        <thead><tr><th>Désignation</th><th class="r">Montant</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <div class="doc-tot"><div class="box">
-        <div class="lgrid grand"><span>${paid?'Montant réglé':'Montant à payer'}</span><span>${eur(f.total)}</span></div>
-      </div></div>
-      <div class="doc-legal">${legal}<br>${paid?'Facture acquittée. Merci.':'Règlement à réception de facture.'}</div>
-    </div>`;
-  $('#doc-wrap').classList.remove('hidden');
-  document.body.style.overflow='hidden';
+  const co=S.company; const dv=S.devis.find(x=>x.id===f.devis_id);
+  const client=S.clients.find(c=>c.id===f.client_id)||{};
+  const lsum=(dv&&dv.devis_lignes)?dv.devis_lignes.reduce((s,l)=>s+(+l.montant||0),0):0;
+  const partial=(f.type==='acompte'||f.type==='solde'||f.type==='normale'||Math.abs(lsum-(+f.total||0))>0.5);
+  const label=f.type==='acompte'?`Acompte sur devis ${dv?dv.numero:''}`:(f.type==='solde'?`Solde des travaux — devis ${dv?dv.numero:''}`:`Prestation — devis ${dv?dv.numero:''}`);
+  const lignes=(partial||!dv||!dv.devis_lignes)
+    ? [{categorie:label,description:(dv&&dv.description_chantier)||'',quantite:1,unite:'forfait',prix_unitaire:+f.total||0,montant:+f.total||0}]
+    : dv.devis_lignes.slice().sort((a,b)=>a.ordre-b.ordre);
+  _curDoc={ title:`Facture ${f.numero}`, filename:`Facture-${f.numero}.pdf`, clientEmail:client.email||'',
+    subject:`Facture ${f.numero} — ${co.nom||'Batix'}`,
+    body:`Bonjour,\n\nVeuillez trouver ci-joint votre facture ${f.numero}.\n\nCordialement,\n${co.nom||''}` };
+  const inner=buildDocHTML('facture',{ numero:f.numero, date:f.date_facture, refDevis:dv?dv.numero:'',
+    clientNom:f.clients?.nom||client.nom||'', clientAdresse:client.adresse||'',
+    desc:dv?dv.description_chantier:'', lignes, total:+f.total||0, tvaRate:dv?(+dv.tva_rate||0):0, factureType:f.type, paid:f.statut==='payee' });
+  $('#doc-wrap').innerHTML = docToolbar()+inner;
+  $('#doc-wrap').classList.remove('hidden'); document.body.style.overflow='hidden';
 };
 
 /* ---- DOC / PRINT ---- */
+let _curDoc={};
+function docToolbar(){ return `<div class="doc-toolbar"><button class="btn sm" style="background:var(--line);color:var(--ink);box-shadow:none" onclick="closeDoc()">✕ Fermer</button><button class="btn ghost sm" onclick="dlPdf()">PDF</button><button class="btn sm" onclick="shareDoc()">Envoyer</button></div>`; }
+function addMonthsFr(ds,n){ if(!ds)return''; const d=new Date(ds+'T00:00:00'); d.setMonth(d.getMonth()+n); return d.toLocaleDateString('fr-FR'); }
+function eurOrDash(v){ return (v!=null&&v!=='')?eur(v):'—'; }
+function buildDocHTML(kind,o){
+  const co=S.company||{}; const isFac=kind==='facture'; const tvaApp=!!co.tva_applicable;
+  const rate=+o.tvaRate||0; const tvaAmt=(+o.total||0)*rate/100; const ttc=(+o.total||0)+tvaAmt;
+  const acM=(!isFac && o.acomptePct>0)? ttc*o.acomptePct/100 : 0;
+  const modes=co.modes_paiement||'Virement bancaire   ·   Chèque';
+  const rows=(o.lignes||[]).length? (o.lignes||[]).map(l=>{
+    const q=(l.quantite!=null&&l.quantite!=='')?(+l.quantite).toLocaleString('fr-FR'):'1';
+    return `<tr>
+      <td><div class="cat">${esc(l.categorie)}</div>${l.description?`<div class="desc">${esc(l.description)}</div>`:''}</td>
+      <td class="c">${q}</td><td class="c">${esc(l.unite||'forfait')}</td>
+      <td class="r">${eurOrDash(l.prix_unitaire)}</td><td class="r">${eur(l.montant)}</td>
+    </tr>`; }).join('')
+    : `<tr><td><div class="cat">Prestation</div>${o.refDevis?`<div class="desc">Selon devis ${esc(o.refDevis)}</div>`:''}</td><td class="c">1</td><td class="c">forfait</td><td class="r">${eur(o.total)}</td><td class="r">${eur(o.total)}</td></tr>`;
+  return `<div class="doc" id="doc-el">
+    <div class="dhead">
+      <div>
+        ${co.logo_url?`<img src="${esc(co.logo_url)}" crossorigin="anonymous" style="max-height:54px;max-width:200px;margin-bottom:10px;object-fit:contain">`:''}
+        <div class="dtitle-co">${co.titulaire_compte?esc(co.titulaire_compte)+'. ':''}${esc(co.nom||'')}</div>
+        <div class="dco">${co.adresse?esc(co.adresse)+'<br>':''}${co.telephone?esc(co.telephone)+'<br>':''}${co.email?esc(co.email)+'<br>':''}${co.rcs?esc(co.rcs):''}</div>
+      </div>
+      <div>
+        <div class="dbig">${isFac?'FACTURE':'DEVIS'}</div>
+        <div class="dnum">n° ${esc(o.numero)}</div>
+        ${isFac&&o.factureType&&o.factureType!=='complete'?`<div class="dmeta" style="color:#3f9d8c">${o.factureType==='acompte'?"Facture d'acompte":'Facture de solde'}</div>`:''}
+        <div class="dmeta">En date du : ${fdate(o.date)}</div>
+        ${!isFac&&o.valide?`<div class="dmeta">Valide jusqu'au : ${o.valide}</div>`:''}
+        ${!isFac&&o.duree?`<div class="dmeta">Durée estimée : ${esc(o.duree)}</div>`:''}
+        ${isFac&&o.refDevis?`<div class="dmeta">Réf. devis : ${esc(o.refDevis)}</div>`:''}
+      </div>
+    </div>
+    <div class="dclient">
+      <div class="dlabel">Client</div>
+      <div class="dclient-name">${esc(o.clientNom||'')}</div>
+      <div class="dclient-adr">${o.clientAdresse?esc(o.clientAdresse):'[Adresse]'}</div>
+    </div>
+    ${o.desc?`<div class="ddesc">${esc(o.desc)}</div>`:''}
+    <table class="dtable">
+      <thead><tr><th>Désignation</th><th class="c">Qté.</th><th class="c">Unité</th><th class="r">Prix U.</th><th class="r">Total</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="dbottom">
+      <div class="dbottom-left">
+        ${acM>0?`<div class="dblock"><div class="dlabel">Acompte</div><div><b>${eur(acM)}</b> (${o.acomptePct} %) à la signature du devis, solde à la réception des travaux.</div></div>`:''}
+        <div class="dblock"><div class="dlabel">Modes de paiement</div><div>${esc(modes)}</div></div>
+      </div>
+      <div class="dbottom-right">
+        <div class="dtot-line"><span>Total HT</span><span>${eur(o.total)}</span></div>
+        ${rate>0?`<div class="dtot-line"><span>TVA ${rate} %</span><span>${eur(tvaAmt)}</span></div>`:''}
+        <div class="dtot-bar"><span>${isFac&&o.paid?'Montant réglé':'Net à payer'}</span><span>${eur(ttc)}</span></div>
+      </div>
+    </div>
+    <div class="dtva">${rate>0?`TVA ${rate} % incluse.`:'TVA non applicable, art. 293 B du CGI.'}</div>
+    ${isFac?'':(o.signatureNom
+      ? `<div class="dsign" style="color:#1a1f2e;font-style:normal;border-color:#3f9d8c">✅ Devis accepté et signé par <b>${esc(o.signatureNom)}</b>${o.signatureDate?` le ${new Date(o.signatureDate).toLocaleDateString('fr-FR')}`:''}.</div>`
+      : `<div class="dsign">Mention « Bon pour Accord », date et signature du client</div>`)}
+    ${(co.iban||co.bic)?`<div class="dbank"><div class="dlabel">Coordonnées bancaires</div><div>${co.titulaire_compte?'Titulaire : '+esc(co.titulaire_compte)+'<br>':''}${co.iban?'IBAN : '+esc(co.iban)+'<br>':''}${co.bic?'BIC : '+esc(co.bic):''}</div></div>`:''}
+    ${(isFac&&o.paid)?`<div style="text-align:center;margin-top:16px"><span class="doc-stamp">PAYÉE</span></div>`:''}
+    <div class="dfoot">${esc(co.nom||'')}${co.siret?' — SIRET '+esc(co.siret):''}${co.adresse?' — '+esc(co.adresse):''}${co.telephone?' — Tél. '+esc(co.telephone):''}${co.email?' — '+esc(co.email):''}${co.assurance?' — Assurance décennale : '+esc(co.assurance):''}</div>
+  </div>`;
+}
+function pdfOpts(){ return {margin:8,filename:_curDoc.filename||'document.pdf',image:{type:'jpeg',quality:0.96},html2canvas:{scale:2,backgroundColor:'#ffffff',useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}; }
+window.dlPdf=async()=>{
+  const el=document.getElementById('doc-el');
+  if(!el||typeof html2pdf==='undefined'){ window.print(); return; }
+  try{ await html2pdf().set(pdfOpts()).from(el).save(); }catch(e){ window.print(); }
+};
+window.shareDoc=async()=>{
+  const el=document.getElementById('doc-el');
+  try{
+    if(el && typeof html2pdf!=='undefined' && navigator.canShare){
+      const blob=await html2pdf().set(pdfOpts()).from(el).outputPdf('blob');
+      const file=new File([blob],_curDoc.filename||'document.pdf',{type:'application/pdf'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:_curDoc.title,text:_curDoc.body});
+        return;
+      }
+    }
+  }catch(e){ if(e&&e.name==='AbortError') return; }
+  // fallback : télécharger le PDF puis ouvrir l'email
+  await dlPdf();
+  const to=encodeURIComponent(_curDoc.clientEmail||'');
+  const su=encodeURIComponent(_curDoc.subject||'');
+  const bo=encodeURIComponent((_curDoc.body||'')+'\n\n(PDF en pièce jointe — joignez le fichier téléchargé.)');
+  setTimeout(()=>{ location.href=`mailto:${to}?subject=${su}&body=${bo}`; },400);
+};
+
 window.openDoc = id=>{
   const d=S.devis.find(x=>x.id===id); if(!d)return;
-  const co=S.company; const lignes=(d.devis_lignes||[]).sort((a,b)=>a.ordre-b.ordre);
-  const rows=lignes.map(l=>`<tr><td><div class="cat">${esc(l.categorie)}</div>${ligneDetail(l)}</td><td class="r"><span class="mont">${eur(l.montant)}</span></td></tr>`).join('');
-  const matNote = d.materiel_fourni_par==='client'
-    ? `<div class="doc-note">Matériaux fournis par le client — le présent devis chiffre la main-d'œuvre (pose) uniquement.</div>`:'';
-  const legal = co.tva_applicable
-    ? `TVA incluse selon la réglementation en vigueur.`
-    : `TVA non applicable, art. 293 B du CGI.`;
-  $('#doc-wrap').innerHTML = `
-    <div class="doc-toolbar">
-      <button class="btn ghost sm" onclick="closeDoc()">Fermer</button>
-      <button class="btn sm" onclick="window.print()">Imprimer / PDF</button>
-    </div>
-    <div class="doc" id="doc">
-      <div class="doc-top">
-        <div>
-          <div class="doc-brand">${esc(co.nom||'')}</div>
-          <div class="doc-co">
-            ${co.adresse?esc(co.adresse)+'<br>':''}
-            ${co.telephone?'Tél : '+esc(co.telephone)+'<br>':''}
-            ${co.email?esc(co.email)+'<br>':''}
-            ${co.siret?'SIRET : '+esc(co.siret):''}
-          </div>
-        </div>
-        <div class="doc-meta">
-          <div class="big">DEVIS</div>
-          <div>${esc(d.numero)}</div>
-          <div>${fdate(d.date_devis)}</div>
-        </div>
-      </div>
-      <div class="doc-parties">
-        <div></div>
-        <div class="to"><div class="lab">Client</div><b>${esc(d.clients?.nom||'')}</b></div>
-      </div>
-      <table>
-        <thead><tr><th>Désignation</th><th class="r">Montant</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <div class="doc-tot"><div class="box">
-        <div class="lgrid grand"><span>Total à payer</span><span>${eur(d.total)}</span></div>
-      </div></div>
-      ${matNote}
-      ${d.notes?`<div class="doc-note">${esc(d.notes)}</div>`:''}
-      <div class="doc-legal">${legal}<br>Devis valable 30 jours. Bon pour accord : date et signature du client.</div>
-      <div class="doc-sign">
-        <div class="b">Bon pour accord (client)<div class="line"></div></div>
-        <div class="b">${esc(co.nom||'')}<div class="line"></div></div>
-      </div>
-    </div>`;
-  $('#doc-wrap').classList.remove('hidden');
-  document.body.style.overflow='hidden';
+  const co=S.company; const client=S.clients.find(c=>c.id===d.client_id)||{};
+  const lignes=(d.devis_lignes||[]).slice().sort((a,b)=>a.ordre-b.ordre);
+  _curDoc={ title:`Devis ${d.numero}`, filename:`Devis-${d.numero}.pdf`, clientEmail:client.email||'',
+    subject:`Devis ${d.numero} — ${co.nom||'Batix'}`,
+    body:`Bonjour,\n\nVeuillez trouver ci-joint votre devis ${d.numero}.\nN'hésitez pas si vous avez des questions.\n\nCordialement,\n${co.nom||''}` };
+  const inner=buildDocHTML('devis',{ numero:d.numero, date:d.date_devis, duree:d.duree_estimee,
+    valide:addMonthsFr(d.date_devis,3), clientNom:d.clients?.nom||client.nom||'', clientAdresse:client.adresse||'',
+    desc:d.description_chantier, lignes, total:+d.total||0, acomptePct:+d.acompte_pct||0, materiel:d.materiel_fourni_par, tvaRate:+d.tva_rate||0, signatureNom:d.signature_nom, signatureDate:d.signature_date });
+  $('#doc-wrap').innerHTML = docToolbar()+inner;
+  $('#doc-wrap').classList.remove('hidden'); document.body.style.overflow='hidden';
 };
 window.closeDoc=()=>{$('#doc-wrap').classList.add('hidden');$('#doc-wrap').innerHTML='';document.body.style.overflow='';};
+$('#doc-wrap').addEventListener('click',e=>{ if(e.target.id==='doc-wrap') closeDoc(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDoc(); });
 
 /* ---- CLIENTS ---- */
 function clientStats(id){ const ds=S.devis.filter(d=>d.client_id===id); return {n:ds.length, tot:ds.reduce((s,d)=>s+(+d.total||0),0)}; }
+function clientInitials(nom){ const p=(nom||'?').trim().split(/\s+/); return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase(); }
+function clientHue(nom){ let h=0; for(const ch of (nom||'')) h=(h*31+ch.charCodeAt(0))%360; return h; }
+window.newDevisFor=(id)=>{ newDevis(); ED.client_id=id; viewEditor(); };
 function viewClients(){
   const q=(window._clq||'').toLowerCase();
   const list=S.clients.filter(c=>!q||(c.nom||'').toLowerCase().includes(q)||(c.adresse||'').toLowerCase().includes(q));
   const cards=list.length?list.map(c=>{
     const st=clientStats(c.id);
-    return `<div class="cl-card">
-      <h4>${esc(c.nom)}</h4>
-      <div class="adr">${c.adresse?esc(c.adresse):'<span style="color:var(--faint)">Sans adresse</span>'}</div>
-      ${c.telephone?`<div class="adr">☎ ${esc(c.telephone)}</div>`:''}
-      <div class="meta"><span><b>${st.n}</b> devis</span><span><b>${eur(st.tot)}</b></span></div>
-      <div style="margin-top:12px"><button class="btn ghost sm" onclick="editClient('${c.id}')">Modifier</button></div>
+    const imp=S.factures.filter(f=>f.client_id===c.id&&f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);
+    const h=clientHue(c.nom);
+    return `<div class="cl-card2">
+      <div class="cl-top">
+        <div class="cl-ava" style="background:linear-gradient(135deg,hsl(${h},62%,56%),hsl(${(h+40)%360},58%,44%))">${esc(clientInitials(c.nom))}</div>
+        <div style="flex:1;min-width:0">
+          <div class="cl-name">${esc(c.nom)}</div>
+          <span class="cl-badge ${imp>0?'bad':'ok'}">${imp>0?eur(imp)+' dû':'À jour'}</span>
+        </div>
+      </div>
+      <div class="cl-info">
+        <div>📍 ${c.adresse?esc(c.adresse):'<span style="color:var(--faint)">Sans adresse</span>'}</div>
+        ${c.telephone?`<div>☎ ${esc(c.telephone)}</div>`:''}
+        ${c.email?`<div>✉ ${esc(c.email)}</div>`:''}
+      </div>
+      <div class="cl-stats">
+        <div><b>${st.n}</b><span>Devis</span></div>
+        <div><b>${eur(st.tot)}</b><span>Volume</span></div>
+        <div><b style="color:${imp>0?'var(--bad)':'var(--ink)'}">${eur(imp)}</b><span>Impayé</span></div>
+      </div>
+      <div class="cl-actions">
+        <button class="btn sm" onclick="newDevisFor('${c.id}')">+ Devis</button>
+        <button class="btn ghost sm" onclick="editClient('${c.id}')">Modifier</button>
+        <button class="btn ghost sm" onclick="delClient('${c.id}')">Suppr.</button>
+      </div>
     </div>`;
   }).join(''):`<div class="empty" style="grid-column:1/-1"><b>${window._clq?'Aucun résultat':'Aucun client'}</b>${window._clq?'Essayez un autre nom ou adresse.':'Ajoutés automatiquement dès votre premier devis.'}</div>`;
   $('#view').innerHTML=`
@@ -755,6 +1676,15 @@ function viewClients(){
   const s=$('#cl-search');
   s.oninput=()=>{ const p=s.selectionStart; window._clq=s.value; viewClients(); const n=$('#cl-search'); n.focus(); n.setSelectionRange(p,p); };
 }
+window.delClient=async(id)=>{
+  const c=S.clients.find(x=>x.id===id);
+  const nbD=S.devis.filter(d=>d.client_id===id).length;
+  const nbF=S.factures.filter(f=>f.client_id===id).length;
+  if(nbD||nbF){ alert(`Impossible de supprimer « ${c?c.nom:''} » : il a encore ${nbD} devis et ${nbF} facture(s).\nSupprimez ou réattribuez-les d'abord.`); return; }
+  if(!confirm(`Supprimer le client ${c?c.nom:''} ?`)) return;
+  try{ await db('clients',{method:'DELETE',query:`?id=eq.${id}`}); S.clients=S.clients.filter(x=>x.id!==id); viewClients(); }
+  catch(e){ alert(e.message); }
+};
 window.editClient=(id)=>{
   const c=id?S.clients.find(x=>x.id===id):{};
   $('#view').innerHTML=`
@@ -816,6 +1746,259 @@ function viewCarte(){
   },60);
 }
 
+/* ---- AGENDA / CALENDRIER ---- */
+let _calY=null,_calM=null,_calSel=null;
+function dstr(y,m,d){ const dt=new Date(y,m,d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; }
+function viewAgenda(){
+  const now=new Date();
+  if(_calY==null){ _calY=now.getFullYear(); _calM=now.getMonth(); }
+  const todayS=dstr(now.getFullYear(),now.getMonth(),now.getDate());
+  if(!_calSel) _calSel=todayS;
+  const y=_calY,m=_calM;
+  const first=new Date(y,m,1);
+  const start=(first.getDay()+6)%7;           // Monday = 0
+  const nbDays=new Date(y,m+1,0).getDate();
+  const monthName=first.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const byDate={}; S.events.forEach(e=>{ (byDate[e.date_event]=byDate[e.date_event]||[]).push(e); });
+  const cells=[];
+  for(let i=0;i<start;i++) cells.push({d:0,out:true});
+  for(let d=1;d<=nbDays;d++) cells.push({d,out:false,date:dstr(y,m,d)});
+  while(cells.length%7!==0) cells.push({d:0,out:true});
+  const dows=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const grid=dows.map(x=>`<div class="cal-dow">${x}</div>`).join('')
+    + cells.map(c=>{
+        if(c.out) return `<div class="cal-cell out"></div>`;
+        const evs=byDate[c.date]||[];
+        const dots=evs.slice(0,3).map(()=>`<span class="dot"></span>`).join('');
+        return `<div class="cal-cell ${c.date===todayS?'today':''} ${c.date===_calSel?'sel':''}" onclick="calPick('${c.date}')">
+          <div class="dn">${c.d}</div><div class="dots">${dots}</div></div>`;
+      }).join('');
+  const selEvs=(byDate[_calSel]||[]).sort((a,b)=>(a.heure||'').localeCompare(b.heure||''));
+  const evMeta=(e)=>{
+    const dv=e.devis_id?S.devis.find(x=>x.id===e.devis_id):null;
+    const tag=dv?`<span class="evtag">Chantier</span>`:'';
+    const sub=[]; if(dv){ if(dv.clients?.nom) sub.push(esc(dv.clients.nom)); sub.push(esc(dv.numero)); } if(e.note) sub.push(esc(e.note));
+    return {tag,sub:sub.join(' · ')};
+  };
+  const selList=selEvs.length?selEvs.map(e=>{const {tag,sub}=evMeta(e);return `
+    <div class="cal-ev">
+      <div><div class="ti">${esc(e.titre)}${tag}</div>${sub?`<div class="no">${sub}</div>`:''}</div>
+      <div style="display:flex;align-items:center;gap:10px">${e.heure?`<span class="hh">${esc(e.heure)}</span>`:''}<button class="btn ghost sm" onclick="delEvent('${e.id}')">✕</button></div>
+    </div>`;}).join(''):`<div class="empty" style="padding:26px"><b>Rien ce jour</b>Ajoutez un rendez-vous ci-dessous.</div>`;
+  const upcoming=S.events.filter(e=>e.date_event>=todayS).sort((a,b)=>a.date_event.localeCompare(b.date_event)||(a.heure||'').localeCompare(b.heure||'')).slice(0,6);
+  const upList=upcoming.length?upcoming.map(e=>{const {tag,sub}=evMeta(e);return `
+    <div class="cal-ev">
+      <div><div class="ti">${esc(e.titre)}${tag}</div><div class="no">${new Date(e.date_event+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}${e.heure?' · '+esc(e.heure):''}${sub?' · '+sub:''}</div></div>
+      <button class="btn ghost sm" onclick="calGoTo('${e.date_event}')">Voir</button>
+    </div>`;}).join(''):`<div class="empty" style="padding:26px"><b>Aucun rendez-vous à venir</b></div>`;
+  const selLabel=new Date(_calSel+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Agenda</h2></div>
+    <div class="panel">
+      <div class="cal-head">
+        <h3>${monthName}</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost sm" onclick="calMove(-1)">←</button>
+          <button class="btn ghost sm" onclick="calToday()">Aujourd'hui</button>
+          <button class="btn ghost sm" onclick="calMove(1)">→</button>
+        </div>
+      </div>
+      <div class="cal-grid">${grid}</div>
+    </div>
+    <div class="sec-head"><h2 style="text-transform:capitalize">${selLabel}</h2></div>
+    <div id="ev-msg"></div>
+    <div class="card" style="margin-bottom:16px">${selList}</div>
+    <div class="panel">
+      <h3>Ajouter un rendez-vous</h3>
+      <div class="grid2">
+        <label class="fld"><span>Titre</span><input class="inp" id="ev-titre" placeholder="Ex : Visite chantier Dupont"></label>
+        <label class="fld"><span>Heure (optionnel)</span><input class="inp" id="ev-h" type="time"></label>
+      </div>
+      <label class="fld"><span>Lié à un chantier (optionnel)</span>
+        <select class="inp" id="ev-devis"><option value="">— Aucun (rendez-vous simple) —</option>
+          ${S.devis.map(d=>`<option value="${d.id}">${esc(d.numero)} — ${esc(d.clients?.nom||'')}</option>`).join('')}
+        </select></label>
+      <label class="fld"><span>Note (optionnel)</span><input class="inp" id="ev-note" placeholder="Adresse, détails…"></label>
+      <div class="editor-actions"><button class="btn" id="ev-add" onclick="addEvent()">Ajouter</button></div>
+    </div>
+    <div class="sec-head"><h2>Prochains rendez-vous</h2></div>
+    <div class="card">${upList}</div>`;
+}
+window.calMove=(delta)=>{ _calM+=delta; if(_calM<0){_calM=11;_calY--;} if(_calM>11){_calM=0;_calY++;} viewAgenda(); };
+window.calToday=()=>{ const n=new Date(); _calY=n.getFullYear(); _calM=n.getMonth(); _calSel=dstr(n.getFullYear(),n.getMonth(),n.getDate()); viewAgenda(); };
+window.calPick=(date)=>{ _calSel=date; viewAgenda(); };
+window.calGoTo=(date)=>{ const d=new Date(date+'T00:00:00'); _calY=d.getFullYear(); _calM=d.getMonth(); _calSel=date; viewAgenda(); window.scrollTo(0,0); };
+window.addEvent=async()=>{
+  let titre=$('#ev-titre').value.trim(); const h=$('#ev-h').value, note=$('#ev-note').value.trim();
+  const dvId=$('#ev-devis').value;
+  if(!titre && dvId) titre='Début du chantier';
+  if(!titre){ $('#ev-msg').innerHTML='<div class="msg err">Indiquez un titre.</div>'; return; }
+  const btn=$('#ev-add'); btn.disabled=true; btn.textContent='…';
+  try{
+    const r=await db('events',{method:'POST',prefer:'return=representation',body:{company_id:S.company.id,titre,date_event:_calSel,heure:h||null,note:note||null,devis_id:dvId||null,type:dvId?'chantier':'rdv'}});
+    S.events.push(r[0]); viewAgenda();
+  }catch(e){ $('#ev-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Ajouter'; }
+};
+window.delEvent=async(id)=>{
+  try{ await db('events',{method:'DELETE',query:`?id=eq.${id}`}); S.events=S.events.filter(x=>x.id!==id); viewAgenda(); }catch(e){}
+};
+
+/* ---- BIBLIOTHEQUE ---- */
+let _bfilter='tous', _bq='';
+function viewBiblio(){
+  const items=S.biblio.filter(b=>(_bfilter==='tous'||b.type===_bfilter)&&(!_bq||(b.designation||'').toLowerCase().includes(_bq.toLowerCase())||(b.description||'').toLowerCase().includes(_bq.toLowerCase())));
+  const tabs=[['tous','Tous'],['ouvrage','Ouvrages'],['materiel','Matériaux'],['fourniture','Fournitures']].map(t=>`<button class="btn ${_bfilter===t[0]?'':'ghost'} sm" onclick="setBFilter('${t[0]}')">${t[1]}</button>`).join('');
+  const rows=items.length
+    ? `<div class="clients-grid">`+items.map(b=>`
+      <div class="bib-card">
+        <div class="bib-top"><span class="bib-badge ${esc(b.type||'ouvrage')}">${esc(TYPEL[b.type]||b.type||'')}</span><span class="bib-unite">${esc(b.unite||'')}</span></div>
+        <div class="bib-name">${esc(b.designation)}</div>
+        <div class="bib-desc">${b.description?esc(b.description):''}</div>
+        <div class="bib-bottom">
+          <div class="bib-price">${eur(b.prix_unitaire)}<small>/${esc(b.unite||'u')}</small></div>
+          <div class="bib-actions"><button class="btn ghost sm" onclick="editBiblio('${b.id}')">Éditer</button><button class="btn ghost sm" onclick="delBiblio('${b.id}')">✕</button></div>
+        </div>
+        ${(()=>{const th=(+S.company.taux_horaire||0);const cm=+b.cout_materiel||0;const mo=(+b.heures_unite||0)*th;const cost=cm+mo;const pv=+b.prix_unitaire||0;const marge=pv-cost;if(cost<=0)return '';return `<div style="font-size:11.5px;color:var(--faint);border-top:1px solid var(--line);margin-top:10px;padding-top:8px">Coût ≈ ${eur(cost)} (mat ${eur(cm)} + MO ${eur(mo)}) · Marge <b style="color:${marge>=0?'var(--ok)':'var(--bad)'}">${eur(marge)}</b></div>`;})()}
+      </div>`).join('')+`</div>`
+    : `<div class="card"><div class="empty"><b>${(_bq||_bfilter!=='tous')?'Aucun article':'Bibliothèque vide'}</b>Ajoutez vos ouvrages et matériaux avec leurs prix, réutilisables dans chaque devis.</div></div>`;
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Bibliothèque de prix</h2><div style="display:flex;gap:8px">${S.biblio.length?'':'<button class="btn ghost" onclick="importCatalogue()">⬇ Catalogue marché</button>'}<button class="btn" onclick="editBiblio()">+ Nouvel article</button></div></div>
+    <div class="toolbar-pro"><input class="inp search" id="b-search" placeholder="Rechercher un article…" value="${esc(_bq)}"><div style="display:flex;gap:6px;flex-wrap:wrap">${tabs}</div></div>
+    ${rows}`;
+  const s=$('#b-search'); if(s) s.oninput=()=>{ const p=s.selectionStart; _bq=s.value; viewBiblio(); const n=$('#b-search'); n.focus(); n.setSelectionRange(p,p); };
+}
+window.setBFilter=(f)=>{ _bfilter=f; viewBiblio(); };
+const CATALOGUE_MARCHE=[
+  // [type, désignation, unité, prix vente indicatif, coût matériel indicatif, heures/unité]
+  ['ouvrage','Dépose papier peint','m²',9,1,0.2],
+  ['ouvrage','Rebouchage / enduit de lissage','m²',16,3,0.3],
+  ['ouvrage','Ponçage','m²',8,1,0.15],
+  ['ouvrage','Sous-couche (impression)','m²',6,2,0.1],
+  ['ouvrage','Peinture murs 2 couches','m²',30,6,0.3],
+  ['ouvrage','Peinture plafond 2 couches','m²',35,6,0.35],
+  ['ouvrage','Peinture boiseries / porte','u',65,10,1],
+  ['ouvrage','Peinture murs 2 couches (pose seule)','m²',18,0,0.3],
+  ['ouvrage','Peinture plafond (pose seule)','m²',22,0,0.35],
+  ['ouvrage','Cloison placo BA13 + ossature','m²',48,18,0.5],
+  ['ouvrage','Doublage isolé','m²',55,25,0.5],
+  ['ouvrage','Faux plafond placo','m²',55,20,0.6],
+  ['ouvrage','Bandes + joints (finition placo)','m²',12,2,0.25],
+  ['ouvrage','Pose placo (pose seule)','m²',25,0,0.5],
+  ['ouvrage','Pose carrelage sol','m²',55,25,0.6],
+  ['ouvrage','Pose faïence murale','m²',65,28,0.7],
+  ['ouvrage','Pose carrelage (pose seule)','m²',40,0,0.6],
+  ['ouvrage','Ragréage / chape','m²',30,10,0.3],
+  ['ouvrage','Pose parquet flottant','m²',35,18,0.3],
+  ['ouvrage','Pose parquet collé','m²',60,30,0.6],
+  ['ouvrage','Parquet (pose seule)','m²',25,0,0.3],
+  ['ouvrage','Sol PVC / lino','m²',35,15,0.3],
+  ['ouvrage','Plinthes','ml',12,4,0.15],
+  ['ouvrage','Protection + installation chantier','forfait',250,30,0],
+  ['ouvrage','Nettoyage fin de chantier + évacuation','forfait',300,20,0]
+];
+window.importCatalogue=async()=>{
+  if(!confirm('Importer le catalogue marché ('+CATALOGUE_MARCHE.length+' lignes) ?\nCe sont des prix indicatifs — tu pourras les modifier ensuite.')) return;
+  try{
+    const body=CATALOGUE_MARCHE.map(r=>({company_id:S.company.id,type:r[0],designation:r[1],unite:r[2],prix_unitaire:r[3],cout_materiel:r[4],heures_unite:r[5]}));
+    const r=await db('bibliotheque',{method:'POST',prefer:'return=representation',body});
+    if(Array.isArray(r)) r.forEach(x=>S.biblio.push(x));
+    viewBiblio();
+  }catch(e){ alert(e.message); }
+};
+window.editBiblio=(id)=>{
+  const b=id?S.biblio.find(x=>x.id===id):{type:'ouvrage',unite:'m²'};
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>${id?"Modifier l'article":'Nouvel article'}</h2><button class="btn ghost" onclick="go('biblio')">← Retour</button></div>
+    <div id="bf-msg"></div>
+    <div class="panel">
+      <div class="grid2">
+        <label class="fld"><span>Type</span><select class="inp" id="bf-type">${['ouvrage','materiel','fourniture'].map(t=>`<option value="${t}" ${b.type===t?'selected':''}>${TYPEL[t]}</option>`).join('')}</select></label>
+        <label class="fld"><span>Unité</span><select class="inp" id="bf-unite">${['m²','ml','u','h','forfait'].map(u=>`<option ${b.unite===u?'selected':''}>${u}</option>`).join('')}</select></label>
+      </div>
+      <label class="fld"><span>Désignation</span><input class="inp" id="bf-des" value="${esc(b.designation||'')}" placeholder="Ex : Pose carrelage sol"></label>
+      <label class="fld"><span>Description (optionnel)</span><input class="inp" id="bf-desc" value="${esc(b.description||'')}" placeholder="Ex : colle + joints compris"></label>
+      <label class="fld"><span>Prix unitaire de vente (€)</span><input class="inp" id="bf-prix" type="number" step="0.01" value="${b.prix_unitaire??''}" oninput="bfCalc()"></label>
+      <div class="grid2">
+        <label class="fld"><span>Coût matériel / unité (€)</span><input class="inp" id="bf-cm" type="number" step="0.01" value="${b.cout_materiel??''}" placeholder="0" oninput="bfCalc()"></label>
+        <label class="fld"><span>Heures / unité</span><input class="inp" id="bf-hu" type="number" step="0.05" value="${b.heures_unite??''}" placeholder="Ex : 0.8" oninput="bfCalc()"></label>
+      </div>
+      <div id="bf-calc" style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px"></div>
+      <div class="editor-actions"><button class="btn" id="bf-save">Enregistrer</button></div>
+    </div>`;
+  bfCalc();
+  $('#bf-save').onclick=async()=>{
+    const des=$('#bf-des').value.trim(); if(!des){$('#bf-msg').innerHTML='<div class="msg err">La désignation est requise.</div>';return;}
+    const btn=$('#bf-save');btn.disabled=true;btn.textContent='…';
+    const body={type:$('#bf-type').value,unite:$('#bf-unite').value,designation:des,description:$('#bf-desc').value.trim()||null,prix_unitaire:parseFloat($('#bf-prix').value)||0,cout_materiel:parseFloat($('#bf-cm').value)||0,heures_unite:parseFloat($('#bf-hu').value)||0};
+    try{
+      if(id){ const r=await db('bibliotheque',{method:'PATCH',query:`?id=eq.${id}`,prefer:'return=representation',body}); Object.assign(S.biblio.find(x=>x.id===id),r[0]); }
+      else{ body.company_id=S.company.id; const r=await db('bibliotheque',{method:'POST',prefer:'return=representation',body}); S.biblio.push(r[0]); }
+      go('biblio');
+    }catch(e){$('#bf-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`;btn.disabled=false;btn.textContent='Enregistrer';}
+  };
+};
+window.bfCalc=()=>{
+  const box=$('#bf-calc'); if(!box)return;
+  const th=(+S.company.taux_horaire||0);
+  const pv=parseFloat($('#bf-prix')?.value)||0, cm=parseFloat($('#bf-cm')?.value)||0, hu=parseFloat($('#bf-hu')?.value)||0;
+  const mo=hu*th, cost=cm+mo, marge=pv-cost, pct=pv?Math.round(marge/pv*1000)/10:0;
+  box.innerHTML = th<=0
+    ? `<span style="color:var(--warn)">Renseigne ton taux horaire dans « Mon entreprise » pour calculer le coût main d'œuvre.</span>`
+    : `Coût matériel : <b>${eur(cm)}</b> · Main d'œuvre : <b>${eur(mo)}</b> (${hu||0} h × ${eur(th)})<br>Coût total/unité : <b>${eur(cost)}</b> → Marge : <b style="color:${marge>=0?'var(--ok)':'var(--bad)'}">${eur(marge)} (${pct}%)</b>`;
+};
+window.delBiblio=async(id)=>{ if(!confirm('Supprimer cet article ?'))return; try{ await db('bibliotheque',{method:'DELETE',query:`?id=eq.${id}`}); S.biblio=S.biblio.filter(x=>x.id!==id); viewBiblio(); }catch(e){alert(e.message);} };
+
+/* library picker inside the devis editor */
+window.openBiblioPick=()=>{ if(!ED)return; $('#bpick').classList.remove('hidden'); renderBpick(''); };
+function closeBpick(){ $('#bpick').classList.add('hidden'); $('#bpick').innerHTML=''; }
+window.closeBpick=closeBpick;
+function renderBpick(q){
+  const list=S.biblio.filter(b=>!q||(b.designation||'').toLowerCase().includes(q.toLowerCase())||(b.description||'').toLowerCase().includes(q.toLowerCase()));
+  $('#bpick').innerHTML=`<div style="max-width:620px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.55)">
+    <div style="display:flex;gap:8px;padding:14px;border-bottom:1px solid var(--line)"><input id="bpick-q" class="inp" placeholder="Rechercher dans la bibliothèque…" value="${esc(q)}"><button class="btn ghost sm" onclick="closeBpick()">✕</button></div>
+    <div style="max-height:60vh;overflow:auto;padding:10px">${list.length?list.map(b=>`<div class="pro-item" style="cursor:pointer" onclick="insertBiblioLine('${b.id}')"><span><b>${esc(b.designation)}</b><br><small class="muted">${esc(TYPEL[b.type]||b.type)} · ${esc(b.unite||'')}</small></span><b>${eur(b.prix_unitaire)}</b></div>`).join(''):`<div class="empty"><b>Bibliothèque vide</b>Ajoutez des articles dans l'onglet Bibliothèque.</div>`}</div>
+  </div>`;
+  const s=$('#bpick-q'); if(s){ s.oninput=()=>renderBpick(s.value); setTimeout(()=>s.focus(),20); }
+}
+window.insertBiblioLine=(id)=>{
+  const b=S.biblio.find(x=>x.id===id); if(!b||!ED)return;
+  const forfait=(b.unite==='forfait');
+  ED.lignes.push({categorie:b.designation||'',description:b.description||'',
+    quantite:forfait?'':1, unite:b.unite||'forfait',
+    prix_unitaire:forfait?'':(b.prix_unitaire||''), montant:(b.prix_unitaire||'')});
+  closeBpick(); renderLignes();
+};
+
+/* ---- TRÉSORERIE ---- */
+function viewTresorerie(){
+  const paid=S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0);
+  const unpaidList=S.factures.filter(f=>f.statut!=='payee');
+  const unpaid=unpaidList.reduce((s,f)=>s+(+f.total||0),0);
+  const invoiced=new Set(S.factures.map(f=>f.devis_id));
+  const toInvoiceList=S.devis.filter(d=>d.statut==='accepte'&&!invoiced.has(d.id));
+  const toInvoice=toInvoiceList.reduce((s,d)=>s+(+d.total||0),0);
+  const taux=(S.company.taux_cotisation!=null?+S.company.taux_cotisation:21.2);
+  const cotis=paid*taux/100;
+  const entrees=unpaid+toInvoice;
+  const position=entrees-cotis;
+  const entRows=[
+    ...unpaidList.map(f=>({n:f.numero,c:(f.clients&&f.clients.nom)||'',t:+f.total||0,k:'Facture impayée'})),
+    ...toInvoiceList.map(d=>({n:d.numero,c:(d.clients&&d.clients.nom)||'',t:+d.total||0,k:'Devis accepté (à facturer)'}))
+  ].sort((a,b)=>b.t-a.t);
+  const list=entRows.length?entRows.map(r=>`<div class="row" style="grid-template-columns:1.6fr auto"><div class="n" style="font-family:inherit;font-weight:500">${esc(r.n)}<div style="color:var(--faint);font-size:12px">${esc(r.c)} · ${esc(r.k)}</div></div><div class="t">${eur(r.t)}</div></div>`).join(''):`<div class="empty"><b>Aucune entrée attendue</b>Les factures impayées et devis acceptés apparaîtront ici.</div>`;
+  $('#view').innerHTML=`
+    <div class="sec-head"><h2>Trésorerie</h2><span class="muted">prévision</span></div>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <div class="stat"><div class="k">À encaisser (impayés)</div><div class="v num">${eur(unpaid)}</div><div class="sub">${unpaidList.length} facture(s)</div></div>
+      <div class="stat"><div class="k">À facturer (devis acceptés)</div><div class="v num">${eur(toInvoice)}</div><div class="sub">${toInvoiceList.length} devis</div></div>
+      <div class="stat"><div class="k">Cotisations à prévoir</div><div class="v num">${eur(cotis)}</div><div class="sub">≈ ${taux}% du encaissé</div></div>
+      <div class="stat"><div class="k">Position prévisionnelle</div><div class="v num" style="color:${position>=0?'var(--ok)':'var(--bad)'}">${eur(position)}</div><div class="sub">entrées − cotisations</div></div>
+    </div>
+    <div class="panel"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><div><div style="color:var(--muted);font-size:13px">Total des entrées attendues</div><div class="num" style="font-family:'Space Grotesk';font-size:26px;font-weight:700;color:var(--accent-soft);margin-top:4px">${eur(entrees)}</div></div><div style="color:var(--faint);font-size:12px;max-width:42ch">Argent qui devrait rentrer : factures non encore payées + devis acceptés pas encore facturés. Estimation indicative.</div></div></div>
+    <div class="sec-head"><h2>Entrées attendues</h2></div>
+    <div class="card">${list}</div>`;
+}
+
 /* ---- SETTINGS ---- */
 function viewSettings(){
   const c=S.company;
@@ -824,6 +2007,9 @@ function viewSettings(){
     <div id="s-msg"></div>
     <div class="panel">
       <p style="color:var(--muted);font-size:13px;margin:0 0 18px">Ces informations apparaissent en haut de vos devis et factures.</p>
+      <label class="fld"><span>Logo (apparaît sur les devis/factures)</span>
+        ${c.logo_url?`<img src="${esc(c.logo_url)}" style="max-height:54px;margin-bottom:8px;display:block;background:#fff;padding:5px;border-radius:8px">`:''}
+        <input class="inp" id="s-logo" type="file" accept="image/*"></label>
       <div class="grid2">
         <label class="fld"><span>Nom de l'entreprise</span><input class="inp" id="s-nom" value="${esc(c.nom||'')}"></label>
         <label class="fld"><span>SIRET</span><input class="inp" id="s-siret" value="${esc(c.siret||'')}"></label>
@@ -838,12 +2024,31 @@ function viewSettings(){
           <option value="false" ${!c.tva_applicable?'selected':''}>TVA non applicable (auto-entrepreneur, art. 293 B)</option>
           <option value="true" ${c.tva_applicable?'selected':''}>TVA applicable</option>
         </select></label>
-      <div class="editor-actions"><button class="btn" id="s-save">Enregistrer</button></div>
+      <label class="fld"><span>Taux de cotisations (%) — pour la Comptabilité</span><input class="inp" id="s-taux" type="number" step="0.1" value="${c.taux_cotisation!=null?c.taux_cotisation:21.2}"></label>
+      <label class="fld"><span>Taux horaire main d'œuvre (€/h) — pour les coûts & marges</span><input class="inp" id="s-th" type="number" step="0.5" value="${c.taux_horaire!=null?c.taux_horaire:''}" placeholder="Ex : 35"></label>
+      <div class="grid2">
+        <label class="fld"><span>RCS / mentions</span><input class="inp" id="s-rcs" placeholder="Ex : RCS Marseille 850 263 989" value="${esc(c.rcs||'')}"></label>
+        <label class="fld"><span>Titulaire du compte</span><input class="inp" id="s-titul" placeholder="Ex : NOVIKOV ARSEN (EI)" value="${esc(c.titulaire_compte||'')}"></label>
+      </div>
+      <div class="grid2">
+        <label class="fld"><span>IBAN</span><input class="inp" id="s-iban" placeholder="FR76…" value="${esc(c.iban||'')}"></label>
+        <label class="fld"><span>BIC</span><input class="inp" id="s-bic" placeholder="CMCIFRPP" value="${esc(c.bic||'')}"></label>
+      </div>
+      <label class="fld"><span>Modes de paiement</span><input class="inp" id="s-modes" placeholder="Virement bancaire   ·   Chèque" value="${esc(c.modes_paiement||'')}"></label>
+      <label class="fld"><span>Assurance décennale (compagnie + n° contrat)</span><input class="inp" id="s-assur" placeholder="Ex : AXA — n° 12345678" value="${esc(c.assurance||'')}"></label>
+      <div class="editor-actions" style="justify-content:space-between"><button class="btn ghost" onclick="exportBackup()">💾 Sauvegarde (JSON)</button><button class="btn" id="s-save">Enregistrer</button></div>
     </div>`;
   $('#s-save').onclick=async()=>{
     const btn=$('#s-save');btn.disabled=true;btn.textContent='…';
     const body={nom:$('#s-nom').value.trim(),siret:$('#s-siret').value.trim(),adresse:$('#s-adr').value.trim(),
-      telephone:$('#s-tel').value.trim(),email:$('#s-mail').value.trim(),tva_applicable:$('#s-tva').value==='true'};
+      telephone:$('#s-tel').value.trim(),email:$('#s-mail').value.trim(),tva_applicable:$('#s-tva').value==='true',
+      taux_cotisation:parseFloat($('#s-taux').value)||0,
+      taux_horaire:parseFloat($('#s-th').value)||0,
+      rcs:$('#s-rcs').value.trim()||null,titulaire_compte:$('#s-titul').value.trim()||null,
+      iban:$('#s-iban').value.trim()||null,bic:$('#s-bic').value.trim()||null,
+      modes_paiement:$('#s-modes').value.trim()||null,assurance:$('#s-assur').value.trim()||null};
+    const lf=$('#s-logo')&&$('#s-logo').files&&$('#s-logo').files[0];
+    if(lf){ try{ btn.textContent='Envoi du logo…'; body.logo_url=await uploadFile(lf); }catch(e){ $('#s-msg').innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Enregistrer'; return; } }
     try{
       const r=await db('companies',{method:'PATCH',query:`?id=eq.${c.id}`,prefer:'return=representation',body});
       S.company=r[0]; $('#w-co').textContent=S.company.nom;
@@ -853,7 +2058,192 @@ function viewSettings(){
   };
 }
 
+/* ===== BATIX PRO STUDIO FUNCTION PACK ===== */
+const PRO_TEMPLATES={
+  salle_de_bain:[['Dépose et évacuation des éléments existants',1,'forfait',650],['Préparation murs et sols',20,'m²',28],['Étanchéité SPEC',12,'m²',24],['Pose carrelage murs',28,'m²',48],['Pose carrelage sol',8,'m²',52],['Installation douche / robinetterie',1,'forfait',980],['Peinture plafond',8,'m²',22]],
+  peinture:[['Protection et préparation',1,'forfait',220],['Enduit / reprises',30,'m²',18],['Ponçage',30,'m²',9],['Sous-couche',30,'m²',8],['Deux couches peinture',30,'m²',22]],
+  placo:[['Fourniture plaques + ossature',25,'m²',31],['Isolation',25,'m²',17],['Pose plaques',25,'m²',29],['Bandes + joints',25,'m²',14],['Ponçage et préparation peinture',25,'m²',11]]
+};
+function openProStudio(){ $('#pro-studio').classList.remove('hidden'); renderProTab('pilotage'); }
+function closeProStudio(){ $('#pro-studio').classList.add('hidden'); }
+window.openProStudio=openProStudio; window.closeProStudio=closeProStudio;
+window.openAIDevis=()=>{ $('#pro-studio').classList.remove('hidden'); document.querySelectorAll('.pro-tab').forEach(x=>x.classList.toggle('on',x.dataset.protab==='aidevis')); renderProTab('aidevis'); };
+window.assistAI=()=>{ const t=($('#assist-txt')?.value||'').trim(); openAIDevis(); setTimeout(()=>{ const ta=$('#ai-desc'); if(ta&&t){ ta.value=t; generateAIDevis(); } },80); };
+document.addEventListener('click',e=>{const b=e.target.closest('[data-protab]');if(b){document.querySelectorAll('.pro-tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderProTab(b.dataset.protab)}});
+function proTotal(d){return (d||[]).reduce((s,x)=>s+(+x.montant||(+x.quantite||0)*(+x.prix||0)),0)}
+function renderProTab(tab){
+ const el=$('#pro-body'); if(!el)return;
+ if(tab==='pilotage'){
+  const ca=S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0), unpaid=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0), dep=S.depenses.reduce((s,d)=>s+(+d.montant||0),0), accepted=S.devis.filter(d=>d.statut==='accepte').reduce((s,d)=>s+(+d.total||0),0);
+  el.innerHTML=`<div class="pro-grid"><div class="pro-box"><span class="muted">CA encaissé</span><div class="pro-kpi">${eur(ca)}</div><span class="pro-tag">LIVE</span></div><div class="pro-box"><span class="muted">À encaisser</span><div class="pro-kpi">${eur(unpaid)}</div></div><div class="pro-box"><span class="muted">Devis acceptés</span><div class="pro-kpi">${eur(accepted)}</div></div></div><div class="pro-two" style="margin-top:14px"><div class="pro-box"><h3>🚧 Chantiers à surveiller</h3><p>Classement par dépenses enregistrées.</p><div class="pro-list">${S.devis.map(d=>{const x=S.depenses.filter(z=>z.devis_id===d.id).reduce((s,z)=>s+(+z.montant||0),0);const m=(+d.total||0)-x;return `<div class="pro-item"><span><b>${esc(d.numero)}</b><br><small class="muted">${esc(d.clients?.nom||'Sans client')}</small></span><b>${eur(m)}</b></div>`}).slice(0,7).join('')||'<p>Aucun chantier.</p>'}</div></div><div class="pro-box"><h3>🔎 Analyse rapide</h3><p>Interroge tes chiffres (impayés, CA, dépenses, marge).</p><div id="pro-chat" class="pro-chat"><div class="pro-bubble bot">Bonjour. Je peux calculer tes chiffres : devis, factures, dépenses et marges. Essaie : « Quels sont mes impayés ? »</div></div><div class="pro-input"><input class="inp" id="pro-q" placeholder="Ex : montre mes impayés"><button class="btn" onclick="proAsk()">Analyser</button></div></div></div>`;
+ } else if(tab==='aidevis'){
+  el.innerHTML=`<div class="pro-two"><div class="pro-box"><h3>🤖 Assistant devis IA</h3><p>Décris les travaux en langage naturel — l'IA rédige les lignes du devis en utilisant tes prix de la bibliothèque.</p><textarea class="inp" id="ai-desc" style="min-height:150px" placeholder="Ex : rénovation salle de bain 8 m², dépose baignoire, pose douche à l'italienne, carrelage murs et sol, peinture plafond"></textarea><div class="pro-actions"><button class="btn" onclick="generateAIDevis()">✨ Générer avec l'IA</button><button class="btn ghost" onclick="useTemplate('salle_de_bain')">Modèle SDB</button><button class="btn ghost" onclick="useTemplate('peinture')">Peinture</button><button class="btn ghost" onclick="useTemplate('placo')">Placo</button></div></div><div class="pro-box"><h3>📋 Aperçu</h3><div id="ai-preview"><p style="color:var(--muted)">Aucune ligne générée.</p></div></div></div>`;
+ } else if(tab==='marge'){
+  el.innerHTML=`<div class="pro-box"><h3>💰 Marge réelle par chantier</h3><p>Calcul : montant du devis − dépenses enregistrées. La marge affichée est une marge brute de chantier.</p><div class="pro-list">${S.devis.map(d=>{const dep=S.depenses.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.montant||0),0), total=+d.total||0, m=total-dep, pct=total?m/total*100:0;return `<div class="pro-item"><span><b>${esc(d.numero)}</b> — ${esc(d.clients?.nom||'')}</span><span><b>${eur(m)}</b> <small class="muted">(${pct.toFixed(1)}%)</small></span></div>`}).join('')||'<p>Aucun devis.</p>'}</div></div>`;
+ } else if(tab==='crm'){
+  el.innerHTML=`<div class="pro-box"><h3>👤 CRM 360</h3><p>Vue commerciale rapide de tes clients.</p><div class="pro-list">${S.clients.map(c=>{const ds=S.devis.filter(d=>d.client_id===c.id), fac=S.factures.filter(f=>f.client_id===c.id), ca=ds.reduce((s,d)=>s+(+d.total||0),0), imp=fac.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);return `<div class="pro-item"><span><b>${esc(c.nom)}</b><br><small class="muted">${esc(c.telephone||c.email||'')}</small></span><span style="text-align:right">${eur(ca)}<br><small class="${imp?'':'muted'}">${imp?eur(imp)+' impayé':'À jour'}</small></span></div>`}).join('')||'<p>Aucun client.</p>'}</div></div>`;
+ } else if(tab==='relances'){
+  const fac=S.factures.filter(f=>f.statut!=='payee');
+  window._relances=fac.map(f=>{ const c=S.clients.find(x=>x.id===f.client_id)||{}; return `Bonjour ${c.nom||''},\n\nSauf erreur de ma part, la facture ${f.numero||''} d'un montant de ${eur(f.total)} reste à ce jour en attente de règlement.\n\nMerci de me confirmer sa prise en compte.\n\nBien cordialement,\n${S.company?.nom||'Batix'}`; });
+  el.innerHTML=`<div class="pro-box"><h3>📩 Relances</h3><p>Messages prêts à copier pour les factures non réglées.</p><div class="pro-list">${fac.length?fac.map((f,i)=>{const c=S.clients.find(x=>x.id===f.client_id)||{};return `<div class="pro-item"><span><b>${esc(f.numero||'Facture')}</b> — ${esc(c.nom||'Client')} · ${eur(f.total)}</span><button class="btn ghost sm" onclick="copyProIdx(${i})">Copier</button></div>`}).join(''):'<p>🎉 Aucun impayé.</p>'}</div></div>`;
+ }
+}
+function useTemplate(key){const rows=PRO_TEMPLATES[key]||[];const lines=rows.map((r,i)=>({categorie:r[0],description:'',quantite:r[1],unite:r[2],prix_unitaire:r[3],montant:r[1]*r[3],ordre:i}));const prev=lines.map(x=>`<div class="pro-item"><span>${esc(x.categorie)}<br><small class="muted">${x.quantite} ${esc(x.unite)} × ${eur(x.prix_unitaire)}</small></span><b>${eur(x.montant)}</b></div>`).join('');$('#ai-preview').innerHTML=prev+`<div class="pro-actions"><button class="btn" onclick='applyAILines(${JSON.stringify(lines)})'>Utiliser dans un devis</button></div>`}
+function generateAIQuote(){const t=($('#ai-desc')?.value||'').toLowerCase();let key=t.includes('salle de bain')||t.includes('douche')||t.includes('baignoire')?'salle_de_bain':t.includes('placo')||t.includes('isolation')?'placo':'peinture';useTemplate(key)}
+async function generateAIDevis(){
+  const t=($('#ai-desc')?.value||'').trim(); const prev=$('#ai-preview');
+  if(!t){ prev.innerHTML='<p style="color:var(--bad)">Décris d\'abord les travaux.</p>'; return; }
+  prev.innerHTML='<p style="color:var(--accent-soft)">✨ Génération en cours… (quelques secondes)</p>';
+  try{
+    const r=await fetch(AI_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.token||SUPABASE_KEY}`,'apikey':SUPABASE_KEY},body:JSON.stringify({
+      description:t, tva:(S.company&&S.company.tva_applicable?20:0),
+      bibliotheque:(S.biblio||[]).map(b=>({designation:b.designation,unite:b.unite,prix_unitaire:b.prix_unitaire}))
+    })});
+    const d=await r.json();
+    if(d.error){ prev.innerHTML=`<div class="msg err">${esc(d.error)}</div>`; return; }
+    const lines=(d.lignes||[]).map((x,i)=>{ const forfait=(x.unite==='forfait'||!x.quantite); const q=forfait?1:(+x.quantite||1); const pu=+x.prix_unitaire||0; return {categorie:x.categorie||'',description:x.description||'',quantite:forfait?'':q,unite:x.unite||'forfait',prix_unitaire:forfait?'':pu,montant:forfait?pu:Math.round(q*pu*100)/100,ordre:i}; });
+    if(!lines.length){ prev.innerHTML='<p style="color:var(--muted)">Aucune ligne générée — reformule la description.</p>'; return; }
+    const total=lines.reduce((s,x)=>s+(+x.montant||0),0);
+    prev.innerHTML=lines.map(x=>`<div class="pro-item"><span><b>${esc(x.categorie)}</b>${x.description?'<br><small class="muted">'+esc(x.description)+'</small>':''}</span><b>${eur(x.montant)}</b></div>`).join('')+`<div style="text-align:right;margin-top:10px;font-family:'Space Grotesk';font-weight:700;font-size:17px">Total : ${eur(total)}</div><div class="pro-actions"><button class="btn" onclick='applyAILines(${JSON.stringify(lines)})'>Utiliser dans un devis</button></div>`;
+  }catch(e){ prev.innerHTML=`<div class="msg err">Erreur : ${esc(String(e))}. Vérifie la fonction ai-devis et le secret ANTHROPIC_API_KEY.</div>`; }
+}
+function applyAILines(lines){
+  ED={ numero:nextNum('DEV',S.devis), date:today(), client_id:'', newClient:'', newAddr:'', mat:'entreprise', notes:'',
+       descChantier:'', acompte:'', duree:'',
+       lignes:(lines||[]).map(x=>({categorie:x.categorie||'',description:x.description||'',quantite:x.quantite??'',unite:x.unite||'forfait',prix_unitaire:x.prix_unitaire??'',montant:x.montant??''})) };
+  closeProStudio(); go('editor');
+}
+async function copyProIdx(i){ const t=(window._relances||[])[i]||''; try{await navigator.clipboard.writeText(t);alert('Message copié.')}catch(e){prompt('Copie le message :',t)} }
+function proAsk(){const q=($('#pro-q')?.value||'').toLowerCase().trim();if(!q)return;const chat=$('#pro-chat');let a='Je peux analyser :';if(q.includes('impay')){const n=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);a=`Tu as ${S.factures.filter(f=>f.statut!=='payee').length} facture(s) impayée(s), pour ${eur(n)}.`}else if(q.includes('chiffre')||q.includes('ca')){a=`CA encaissé : ${eur(S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0))}.`}else if(q.includes('dépense')||q.includes('depense')){a=`Dépenses enregistrées : ${eur(S.depenses.reduce((s,d)=>s+(+d.montant||0),0))}.`}else if(q.includes('marge')){a=`Marge brute estimée : ${eur(S.devis.reduce((s,d)=>s+(+d.total||0),0)-S.depenses.reduce((s,d)=>s+(+d.montant||0),0))}.`}else{a=`Je vois ${S.clients.length} client(s), ${S.devis.length} devis, ${S.factures.length} facture(s) et ${S.depenses.length} dépense(s). Essaie « impayés », « CA », « dépenses » ou « marge ».`}chat.innerHTML+=`<div class="pro-bubble me">${esc(q)}</div><div class="pro-bubble bot">${esc(a)}</div>`;chat.scrollTop=chat.scrollHeight}
+
+/* ---- SIGNATURE EN LIGNE (lien client) ---- */
+function genToken(){ return ((crypto&&crypto.randomUUID)?crypto.randomUUID():(Math.random().toString(36).slice(2)+Date.now().toString(36))).replace(/-/g,''); }
+async function ensureShareToken(d){
+  if(d.share_token) return d.share_token;
+  const tok=genToken();
+  await db('devis',{method:'PATCH',query:`?id=eq.${d.id}`,body:{share_token:tok}});
+  d.share_token=tok; return tok;
+}
+function publicUrl(tok){ return `${location.origin}${location.pathname}?d=${tok}`; }
+function qrDataURL(text,size){
+  return new Promise(res=>{
+    if(typeof QRCode==='undefined'){ res(''); return; }
+    try{
+      const holder=document.createElement('div');
+      new QRCode(holder,{text,width:size,height:size,correctLevel:QRCode.CorrectLevel.M});
+      setTimeout(()=>{ const cv=holder.querySelector('canvas'); const img=holder.querySelector('img');
+        try{ res(cv?cv.toDataURL('image/png'):(img&&img.src?img.src:'')); }catch(e){ res(img&&img.src?img.src:''); } },40);
+    }catch(e){ res(''); }
+  });
+}
+window.shareDevisLink=async(id)=>{
+  const d=S.devis.find(x=>x.id===id); if(!d)return;
+  let tok; try{ tok=await ensureShareToken(d); }catch(e){ alert(e.message); return; }
+  const url=publicUrl(tok);
+  try{ if(navigator.share){ await navigator.share({title:`Devis ${d.numero}`,text:`Votre devis ${d.numero} — à consulter et signer en ligne`,url}); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
+  try{ await navigator.clipboard.writeText(url); alert('Lien de signature copié :\n\n'+url); }catch(e){ prompt('Lien du devis à signer :',url); }
+};
+
+async function renderPublic(tok){
+  $('#auth').classList.add('hidden'); $('#app').classList.add('hidden');
+  const el=$('#public'); el.classList.remove('hidden');
+  el.innerHTML=`<div style="max-width:780px;margin:0 auto;padding:60px 16px;text-align:center;color:var(--muted)">Chargement du devis…</div>`;
+  let data=null; try{ data=await rpc('devis_public',{tok}); }catch(e){}
+  if(!data){ el.innerHTML=`<div style="max-width:560px;margin:60px auto;padding:0 16px"><div class="brand" style="justify-content:center;margin-bottom:18px"><span class="glyph">B</span> Batix</div><div class="panel" style="text-align:center"><h3>Devis introuvable</h3><p style="color:var(--muted)">Ce lien est invalide ou a expiré.</p></div></div>`; return; }
+  S.company=data.company||{};
+  const signed=!!data.signature_nom;
+  const inner=buildDocHTML('devis',{ numero:data.numero, date:data.date_devis, duree:data.duree_estimee, valide:addMonthsFr(data.date_devis,3), clientNom:data.client&&data.client.nom||'', clientAdresse:data.client&&data.client.adresse||'', desc:data.description_chantier, lignes:data.lignes||[], total:+data.total||0, acomptePct:+data.acompte_pct||0, materiel:data.materiel_fourni_par, tvaRate:+data.tva_rate||0, signatureNom:data.signature_nom, signatureDate:data.signature_date });
+  el.innerHTML=`
+    <div style="max-width:820px;margin:0 auto;padding:22px 16px 70px">
+      <div class="brand" style="margin-bottom:16px"><span class="glyph">B</span> Batix</div>
+      ${inner}
+      <div class="panel" id="sign-panel" style="margin-top:18px">
+        ${signed
+          ? `<div class="msg info">✅ Devis accepté et signé par ${esc(data.signature_nom)} le ${new Date(data.signature_date).toLocaleDateString('fr-FR')}. Merci !</div>`
+          : `<h3>Accepter et signer</h3>
+             <p style="color:var(--muted);font-size:13px">Signez ci-dessous pour accepter ce devis (bon pour accord).</p>
+             <label class="fld"><span>Votre nom</span><input class="inp" id="sig-nom" placeholder="Nom et prénom"></label>
+             <div style="background:#fff;border-radius:10px;border:1px solid var(--line);overflow:hidden"><canvas id="sig-canvas" style="width:100%;height:180px;touch-action:none;display:block"></canvas></div>
+             <div style="display:flex;gap:8px;margin-top:12px;align-items:center"><button class="btn ghost sm" onclick="sigClear()">Effacer</button><button class="btn" id="sig-go" onclick="sigAccept('${tok}')" style="margin-left:auto">Accepter et signer</button></div>
+             <div id="sig-msg" style="margin-top:10px"></div>`}
+      </div>
+      <div style="text-align:center;color:var(--faint);font-size:11px;margin-top:20px">Propulsé par Batix</div>
+    </div>`;
+  if(!signed) setTimeout(initSignature,30);
+}
+let _sigCtx=null,_sigDrawn=false;
+function initSignature(){
+  const cv=$('#sig-canvas'); if(!cv)return;
+  const dpr=window.devicePixelRatio||1; const rect=cv.getBoundingClientRect();
+  cv.width=rect.width*dpr; cv.height=rect.height*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr); ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#101828';
+  _sigCtx=ctx; _sigDrawn=false;
+  let drawing=false,lx=0,ly=0;
+  const pos=e=>{const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
+  cv.addEventListener('pointerdown',e=>{drawing=true;const p=pos(e);lx=p.x;ly=p.y;cv.setPointerCapture(e.pointerId);e.preventDefault();});
+  cv.addEventListener('pointermove',e=>{if(!drawing)return;const p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;_sigDrawn=true;e.preventDefault();});
+  cv.addEventListener('pointerup',()=>{drawing=false;});
+  cv.addEventListener('pointerleave',()=>{drawing=false;});
+}
+window.sigClear=()=>{ const cv=$('#sig-canvas'); if(cv&&_sigCtx) _sigCtx.clearRect(0,0,cv.width,cv.height); _sigDrawn=false; };
+window.sigAccept=async(tok)=>{
+  const nom=($('#sig-nom').value||'').trim(); const msg=$('#sig-msg');
+  if(!nom){ msg.innerHTML='<div class="msg err">Indiquez votre nom.</div>'; return; }
+  if(!_sigDrawn){ msg.innerHTML='<div class="msg err">Merci de signer dans le cadre.</div>'; return; }
+  const btn=$('#sig-go'); btn.disabled=true; btn.textContent='Envoi…';
+  let img=''; try{ img=$('#sig-canvas').toDataURL('image/png'); }catch(e){}
+  try{
+    await rpc('devis_sign',{tok,nom,img});
+    $('#sign-panel').innerHTML=`<div class="msg info">✅ Merci ${esc(nom)} ! Votre devis est accepté et signé. L'entreprise a bien reçu votre accord.</div>`;
+  }catch(e){ msg.innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Accepter et signer'; }
+};
+
+
+/* ---- IMPORT DEVIS (code BATIX) ---- */
+window.openImport=()=>{
+  const el=$('#fmodal'); el.classList.remove('hidden');
+  el.innerHTML=`<div style="max-width:520px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 30px 90px rgba(0,0,0,.55)">
+    <h3 style="margin:0 0 4px">Importer un devis</h3>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Colle le code BATIX reçu. Le devis s'ouvre pré-rempli, tu choisis le client puis « Enregistrer ».</p>
+    <textarea class="inp" id="imp-txt" style="min-height:160px;font-family:monospace;font-size:12px" placeholder="BATIX:{...}"></textarea>
+    <div id="imp-msg" style="margin-top:10px"></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px;flex-wrap:wrap">
+      <button class="btn ghost sm" onclick="impPaste()">📋 Coller</button>
+      <div style="display:flex;gap:8px"><button class="btn ghost sm" onclick="closeFModal()">Annuler</button><button class="btn sm" onclick="doImport()">Importer</button></div>
+    </div></div>`;
+};
+window.impPaste=async()=>{ try{ const t=await navigator.clipboard.readText(); $('#imp-txt').value=t; }catch(e){ $('#imp-msg').innerHTML='<div class="msg err">Colle le code manuellement (appui long → Coller).</div>'; } };
+window.doImport=()=>{
+  const raw=($('#imp-txt').value||'').trim(); const msg=$('#imp-msg');
+  let d; try{ const i=raw.indexOf('{'), j=raw.lastIndexOf('}'); d=JSON.parse(raw.slice(i,j+1)); }catch(e){ msg.innerHTML='<div class="msg err">Code invalide — vérifie qu\'il est complet.</div>'; return; }
+  const lignes=(d.lignes||d.l||[]).map(x=>{
+    const cat=x.categorie??x.c??'', desc=x.description??x.d??'', u=x.unite??x.u??'forfait';
+    const forfait=(u==='forfait'); const q=+(x.quantite??x.q)||0, pu=+(x.prix_unitaire??x.p)||0;
+    const mt=+(x.montant??x.m)||(forfait?pu:Math.round(q*pu*100)/100);
+    return {categorie:cat,description:desc,quantite:forfait?'':q,unite:u,prix_unitaire:forfait?'':pu,montant:mt};
+  });
+  if(!lignes.length){ msg.innerHTML='<div class="msg err">Aucune ligne dans ce code.</div>'; return; }
+  const num=(d.numero&&!S.devis.some(x=>x.numero===d.numero))?d.numero:nextNum('DEV',S.devis);
+  let cid=''; if(d.client){ const c=S.clients.find(x=>(x.nom||'').toLowerCase()===String(d.client).toLowerCase()); if(c) cid=c.id; }
+  ED={ numero:num, date:d.date||today(), client_id:cid, newClient:cid?'':(d.client||''), newAddr:d.adresse||'',
+    mat:d.materiel||'entreprise', notes:d.notes||'', descChantier:d.description_chantier||d.objet||'',
+    acompte:d.acompte||'', duree:d.duree||'', tva:+d.tva||0, lignes };
+  closeFModal(); go('editor');
+};
+/* ---- Command palette / power shortcuts ---- */
+const CMD_ACTIONS=[['Nouveau devis','newDevis()'],['Factures','go("factures")'],['Agenda','go("agenda")'],['Clients','go("clients")'],['Comptabilité','go("compta")'],['Mon entreprise','go("settings")']];
+function openCmd(){const el=$('#cmd');if(!el)return;el.classList.remove('hidden');$('#cmd-input').value='';renderCmd('');setTimeout(()=>$('#cmd-input').focus(),20)}
+function closeCmd(){const el=$('#cmd');if(el)el.classList.add('hidden')}
+function renderCmd(q){const list=$('#cmd-list');if(!list)return;const a=CMD_ACTIONS.filter(x=>x[0].toLowerCase().includes(q.toLowerCase()));list.innerHTML=a.map((x,i)=>`<button class="btn ghost block" style="justify-content:flex-start;margin-bottom:6px" onclick="${x[1]};closeCmd()">${i+1}. ${x[0]}</button>`).join('')||'<div class="empty">Aucune action</div>'}
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmd()}if(e.key==='Escape')closeCmd()});
+document.addEventListener('click',e=>{if(e.target.id==='cmd')closeCmd()});
+$('#cmd-input').addEventListener('input',e=>renderCmd(e.target.value));
 renderAuthMode();
+(async()=>{
+  const tok=new URLSearchParams(location.search).get('d');
+  if(tok){ try{ await renderPublic(tok); }catch(e){} return; }
+  try{ await restoreSession(); }catch(e){}
+})();
 </script>
 </body>
 </html>
