@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Batix — Devis & Factures</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -441,11 +441,6 @@ body{background:radial-gradient(900px 500px at 85% -10%,rgba(255,106,43,.10),tra
 .pro-kpi{font-family:'Space Grotesk';font-size:27px;font-weight:700;margin-top:6px}.pro-list{display:grid;gap:8px;margin-top:14px}.pro-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.02)}
 .pro-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pro-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.pro-chat{min-height:210px;max-height:360px;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:12px;background:#090e1b}.pro-bubble{padding:10px 12px;border-radius:10px;margin-bottom:8px;font-size:13px;white-space:pre-wrap}.pro-bubble.bot{background:rgba(255,255,255,.055);color:var(--ink)}.pro-bubble.me{background:var(--accent-dim);margin-left:15%;color:#ffd6c2}.pro-input{display:flex;gap:8px;margin-top:10px}.pro-input input{flex:1}.pro-tag{font-size:10px;color:var(--ok);border:1px solid rgba(61,220,151,.25);padding:3px 7px;border-radius:99px}
 @media(max-width:800px){.pro-grid,.pro-two{grid-template-columns:1fr}.pro-body{padding:13px}#pro-studio{padding:8px}.pro-head{padding:15px}}
-
-/* === Safe-area iPhone (status bar) === */
-body{padding-top:env(safe-area-inset-top,0px)}
-html::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#0A0E1C;z-index:2147483647;pointer-events:none}
-#pro-studio,#doc-wrap{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
 </style>
 </head>
 <body>
@@ -532,6 +527,8 @@ html::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script>
 const SUPABASE_URL = 'https://llakesuqcugmdniaqdjr.supabase.co';
 const AI_FN = 'https://llakesuqcugmdniaqdjr.supabase.co/functions/v1/ai-devis';
+const SIMONA_FN = 'https://llakesuqcugmdniaqdjr.supabase.co/functions/v1/simona';
+let _simonaHist = [];
 const SUPABASE_KEY = 'sb_publishable_SCBPyFQ7ktB9Znho8MM6kg_w-cphtSI';
 
 const S = { token:null, refresh:null, user:null, profile:null, company:null, devis:[], factures:[], clients:[], depenses:[], events:[], biblio:[], photos:[], heures:[], ouvriers:[], paies:[], mode:'signup' };
@@ -783,7 +780,7 @@ function viewDash(){
   if(staleDevis.length) al.push(`📄 ${staleDevis.length} devis en attente depuis +10 j`);
   const alertsHtml=al.length?`<div class="panel" style="border-color:rgba(255,106,43,.45);background:linear-gradient(180deg,rgba(255,106,43,.08),transparent)"><b style="color:var(--accent-soft)">À suivre</b><div style="margin-top:8px;display:grid;gap:6px">${al.map(a=>`<div style="font-size:13.5px">${a}</div>`).join('')}</div></div>`:'';
   $('#view').innerHTML=`
-    <div class="sec-head"><div><h2 style="margin-bottom:3px">Tableau de bord</h2><span class="badge-live">Espace entreprise actif</span></div><div style="display:flex;gap:8px"><button class="btn ghost" onclick="openImport()">⬇ Importer</button><button class="btn" onclick="newDevis()">+ Nouveau devis</button></div></div>
+    <div class="sec-head"><div><h2 style="margin-bottom:3px">Tableau de bord</h2><span class="badge-live">Espace entreprise actif</span></div><button class="btn" onclick="newDevis()">+ Nouveau devis</button></div>
     ${alertsHtml}
     <div class="quick-actions">
       <div class="quick-action" onclick="newDevis()"><b>＋ Nouveau devis</b><span>Créer en quelques secondes</span></div>
@@ -989,8 +986,7 @@ const IC={
   chantier:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M6 21V9l6-4 6 4v12"/><path d="M9 21v-6h6v6"/></svg>`,
   tresor:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h3"/></svg>`,
   ai:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l1.6 3.9L17.5 8l-3.9 1.6L12 13l-1.6-3.4L6.5 8l3.9-1.1L12 3z"/><path d="M18 14l.8 2 .2.8 2 .8-2 .8-.2.8-.8 2-.8-2-.2-.8-2-.8 2-.8.2-.8.8-2z"/></svg>`,
-  brigade:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 17h18v2H3z"/><path d="M5 17a7 7 0 0114 0"/><path d="M10 10V6.5a2 2 0 014 0V10"/></svg>`,
-  analyse:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18"/><rect x="5" y="12" width="3" height="6" rx=".5"/><rect x="10.5" y="7" width="3" height="11" rx=".5"/><rect x="16" y="4" width="3" height="14" rx=".5"/></svg>`
+  brigade:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><path d="M16 5a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>`
 };
 function viewAccueil(){
   $('#view').innerHTML=`
@@ -998,14 +994,14 @@ function viewAccueil(){
       <h2>Assistant devis IA 🤖</h2>
       <p>Décris les travaux — l'IA rédige le devis avec tes prix de la bibliothèque.</p>
       <textarea class="inp" id="assist-txt" placeholder="Ex : rénovation salle de bain 8 m², dépose baignoire, douche italienne, carrelage murs et sol, peinture plafond…"></textarea>
-      <button class="btn" onclick="assistAI()">✨ Générer le devis avec l'IA</button> <button class="btn ghost" onclick="openImport()" style="margin-left:6px">⬇ Importer un devis</button>
+      <button class="btn" onclick="assistAI()">✨ Générer le devis avec l'IA</button>
     </div>
     <div class="section-label">Accès rapide</div>
     <div class="tiles">
       <div class="tile" onclick="openAIDevis()" style="border-color:rgba(255,106,43,.5)"><div class="ic">${IC.ai}</div><div class="tt">Assistant IA</div><div class="ts">Devis depuis ton texte</div></div>
       <div class="tile" onclick="go('chantiers')"><div class="ic">${IC.chantier}</div><div class="tt">Chantiers</div><div class="ts">Matériaux, heures, marge</div></div>
       <div class="tile" onclick="go('ouvriers')"><div class="ic">${IC.brigade}</div><div class="tt">Brigade</div><div class="ts">Équipe & heures par métier</div></div>
-      <div class="tile" onclick="go('analyse')"><div class="ic">${IC.analyse}</div><div class="tt">Analyse</div><div class="ts">Coûts moyens & marges</div></div>
+      <div class="tile" onclick="go('analyse')"><div class="ic">${IC.tresor}</div><div class="tt">Analyse</div><div class="ts">Coûts moyens & marges</div></div>
       <div class="tile" onclick="go('compta')"><div class="ic">${IC.compta}</div><div class="tt">Comptabilité</div><div class="ts">Recettes, impayés, cotisations</div></div>
       <div class="tile" onclick="go('tresorerie')"><div class="ic">${IC.tresor}</div><div class="tt">Trésorerie</div><div class="ts">Ce qui doit rentrer</div></div>
       <div class="tile" onclick="go('factures')"><div class="ic">${IC.fac}</div><div class="tt">Factures</div><div class="ts">Suivi des paiements</div></div>
@@ -2075,7 +2071,7 @@ function renderProTab(tab){
  const el=$('#pro-body'); if(!el)return;
  if(tab==='pilotage'){
   const ca=S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0), unpaid=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0), dep=S.depenses.reduce((s,d)=>s+(+d.montant||0),0), accepted=S.devis.filter(d=>d.statut==='accepte').reduce((s,d)=>s+(+d.total||0),0);
-  el.innerHTML=`<div class="pro-grid"><div class="pro-box"><span class="muted">CA encaissé</span><div class="pro-kpi">${eur(ca)}</div><span class="pro-tag">LIVE</span></div><div class="pro-box"><span class="muted">À encaisser</span><div class="pro-kpi">${eur(unpaid)}</div></div><div class="pro-box"><span class="muted">Devis acceptés</span><div class="pro-kpi">${eur(accepted)}</div></div></div><div class="pro-two" style="margin-top:14px"><div class="pro-box"><h3>🚧 Chantiers à surveiller</h3><p>Classement par dépenses enregistrées.</p><div class="pro-list">${S.devis.map(d=>{const x=S.depenses.filter(z=>z.devis_id===d.id).reduce((s,z)=>s+(+z.montant||0),0);const m=(+d.total||0)-x;return `<div class="pro-item"><span><b>${esc(d.numero)}</b><br><small class="muted">${esc(d.clients?.nom||'Sans client')}</small></span><b>${eur(m)}</b></div>`}).slice(0,7).join('')||'<p>Aucun chantier.</p>'}</div></div><div class="pro-box"><h3>🔎 Analyse rapide</h3><p>Interroge tes chiffres (impayés, CA, dépenses, marge).</p><div id="pro-chat" class="pro-chat"><div class="pro-bubble bot">Bonjour. Je peux calculer tes chiffres : devis, factures, dépenses et marges. Essaie : « Quels sont mes impayés ? »</div></div><div class="pro-input"><input class="inp" id="pro-q" placeholder="Ex : montre mes impayés"><button class="btn" onclick="proAsk()">Analyser</button></div></div></div>`;
+  el.innerHTML=`<div class="pro-grid"><div class="pro-box"><span class="muted">CA encaissé</span><div class="pro-kpi">${eur(ca)}</div><span class="pro-tag">LIVE</span></div><div class="pro-box"><span class="muted">À encaisser</span><div class="pro-kpi">${eur(unpaid)}</div></div><div class="pro-box"><span class="muted">Devis acceptés</span><div class="pro-kpi">${eur(accepted)}</div></div></div><div class="pro-two" style="margin-top:14px"><div class="pro-box"><h3>🚧 Chantiers à surveiller</h3><p>Classement par dépenses enregistrées.</p><div class="pro-list">${S.devis.map(d=>{const x=S.depenses.filter(z=>z.devis_id===d.id).reduce((s,z)=>s+(+z.montant||0),0);const m=(+d.total||0)-x;return `<div class="pro-item"><span><b>${esc(d.numero)}</b><br><small class="muted">${esc(d.clients?.nom||'Sans client')}</small></span><b>${eur(m)}</b></div>`}).slice(0,7).join('')||'<p>Aucun chantier.</p>'}</div></div><div class="pro-box"><h3>🤖 Simona</h3><p>Ton assistante IA — elle connaît toutes tes données.</p><div id="pro-chat" class="pro-chat"><div class="pro-bubble bot">Salut, c'est Simona 🤖 Je connais tous tes chiffres — devis, factures, clients, chantiers, marges, ouvriers. Demande-moi : « Qui me doit de l'argent ? », « Ma marge sur le chantier X ? », « Combien je dois à Ivan ? »</div></div><div class="pro-input"><input class="inp" id="pro-q" placeholder="Ex : montre mes impayés"><button class="btn" onclick="proAsk()">Analyser</button></div></div></div>`;
  } else if(tab==='aidevis'){
   el.innerHTML=`<div class="pro-two"><div class="pro-box"><h3>🤖 Assistant devis IA</h3><p>Décris les travaux en langage naturel — l'IA rédige les lignes du devis en utilisant tes prix de la bibliothèque.</p><textarea class="inp" id="ai-desc" style="min-height:150px" placeholder="Ex : rénovation salle de bain 8 m², dépose baignoire, pose douche à l'italienne, carrelage murs et sol, peinture plafond"></textarea><div class="pro-actions"><button class="btn" onclick="generateAIDevis()">✨ Générer avec l'IA</button><button class="btn ghost" onclick="useTemplate('salle_de_bain')">Modèle SDB</button><button class="btn ghost" onclick="useTemplate('peinture')">Peinture</button><button class="btn ghost" onclick="useTemplate('placo')">Placo</button></div></div><div class="pro-box"><h3>📋 Aperçu</h3><div id="ai-preview"><p style="color:var(--muted)">Aucune ligne générée.</p></div></div></div>`;
  } else if(tab==='marge'){
@@ -2114,7 +2110,36 @@ function applyAILines(lines){
   closeProStudio(); go('editor');
 }
 async function copyProIdx(i){ const t=(window._relances||[])[i]||''; try{await navigator.clipboard.writeText(t);alert('Message copié.')}catch(e){prompt('Copie le message :',t)} }
-function proAsk(){const q=($('#pro-q')?.value||'').toLowerCase().trim();if(!q)return;const chat=$('#pro-chat');let a='Je peux analyser :';if(q.includes('impay')){const n=S.factures.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(+f.total||0),0);a=`Tu as ${S.factures.filter(f=>f.statut!=='payee').length} facture(s) impayée(s), pour ${eur(n)}.`}else if(q.includes('chiffre')||q.includes('ca')){a=`CA encaissé : ${eur(S.factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(+f.total||0),0))}.`}else if(q.includes('dépense')||q.includes('depense')){a=`Dépenses enregistrées : ${eur(S.depenses.reduce((s,d)=>s+(+d.montant||0),0))}.`}else if(q.includes('marge')){a=`Marge brute estimée : ${eur(S.devis.reduce((s,d)=>s+(+d.total||0),0)-S.depenses.reduce((s,d)=>s+(+d.montant||0),0))}.`}else{a=`Je vois ${S.clients.length} client(s), ${S.devis.length} devis, ${S.factures.length} facture(s) et ${S.depenses.length} dépense(s). Essaie « impayés », « CA », « dépenses » ou « marge ».`}chat.innerHTML+=`<div class="pro-bubble me">${esc(q)}</div><div class="pro-bubble bot">${esc(a)}</div>`;chat.scrollTop=chat.scrollHeight}
+async function proAsk(){
+  const inp=$('#pro-q'); const q=(inp?.value||'').trim(); if(!q)return;
+  const chat=$('#pro-chat'); if(!chat)return;
+  chat.innerHTML+=`<div class="pro-bubble me">${esc(q)}</div>`;
+  if(inp) inp.value='';
+  const wait=document.createElement('div'); wait.className='pro-bubble bot'; wait.textContent='Simona réfléchit…';
+  chat.appendChild(wait); chat.scrollTop=chat.scrollHeight;
+  try{
+    const r=await fetch(SIMONA_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.token||SUPABASE_KEY}`,'apikey':SUPABASE_KEY},body:JSON.stringify({question:q,contexte:simonaContexte(),historique:_simonaHist})});
+    const d=await r.json();
+    const ans=d.error?('⚠️ '+d.error):(d.reponse||"Je n'ai pas de réponse.");
+    wait.textContent=ans;
+    _simonaHist.push({role:'me',content:q},{role:'bot',content:ans});
+    if(_simonaHist.length>12) _simonaHist=_simonaHist.slice(-12);
+  }catch(e){ wait.textContent='⚠️ Erreur : '+String(e); }
+  chat.scrollTop=chat.scrollHeight;
+}
+function simonaContexte(){
+  const f=S.factures||[], dv=S.devis||[], dep=S.depenses||[], hrs=S.heures||[], ouv=S.ouvriers||[], paies=S.paies||[];
+  const moTot=hrs.reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);
+  return {
+    entreprise:S.company?.nom||'', date:today(),
+    resume:{ ca_encaisse:f.filter(x=>x.statut==='payee').reduce((s,x)=>s+(+x.total||0),0), a_encaisser:f.filter(x=>x.statut!=='payee').reduce((s,x)=>s+(+x.total||0),0), depenses:dep.reduce((s,x)=>s+(+x.montant||0),0), main_oeuvre:moTot, nb_clients:(S.clients||[]).length },
+    clients:(S.clients||[]).map(c=>({nom:c.nom,tel:c.telephone,ville:c.adresse})),
+    devis:dv.map(d=>({numero:d.numero,client:d.clients?.nom,total:+d.total||0,statut:d.statut,date:d.date_devis})),
+    factures:f.map(x=>({numero:x.numero,client:x.clients?.nom,total:+x.total||0,statut:x.statut,date:x.date_facture})),
+    chantiers:dv.map(d=>{const m=dep.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.montant||0),0);const mo=hrs.filter(x=>x.devis_id===d.id).reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);return{numero:d.numero,client:d.clients?.nom,devis:+d.total||0,materiaux:m,main_oeuvre:mo,marge:(+d.total||0)-m-mo,avancement:+d.avancement||0};}),
+    ouvriers:ouv.map(o=>{const co=hrs.filter(x=>x.ouvrier_id===o.id).reduce((s,x)=>s+(+x.heures||0)*(+x.taux_horaire||0),0);const pa=paies.filter(p=>p.ouvrier_id===o.id).reduce((s,p)=>s+(+p.montant||0),0);return{nom:o.nom,metier:o.metier,gagne:co,paye:pa,reste_a_payer:Math.round((co-pa)*100)/100};})
+  };
+}
 
 /* ---- SIGNATURE EN LIGNE (lien client) ---- */
 function genToken(){ return ((crypto&&crypto.randomUUID)?crypto.randomUUID():(Math.random().toString(36).slice(2)+Date.now().toString(36))).replace(/-/g,''); }
@@ -2198,38 +2223,6 @@ window.sigAccept=async(tok)=>{
   }catch(e){ msg.innerHTML=`<div class="msg err">${esc(e.message)}</div>`; btn.disabled=false; btn.textContent='Accepter et signer'; }
 };
 
-
-/* ---- IMPORT DEVIS (code BATIX) ---- */
-window.openImport=()=>{
-  const el=$('#fmodal'); el.classList.remove('hidden');
-  el.innerHTML=`<div style="max-width:520px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 30px 90px rgba(0,0,0,.55)">
-    <h3 style="margin:0 0 4px">Importer un devis</h3>
-    <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Colle le code BATIX reçu. Le devis s'ouvre pré-rempli, tu choisis le client puis « Enregistrer ».</p>
-    <textarea class="inp" id="imp-txt" style="min-height:160px;font-family:monospace;font-size:12px" placeholder="BATIX:{...}"></textarea>
-    <div id="imp-msg" style="margin-top:10px"></div>
-    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px;flex-wrap:wrap">
-      <button class="btn ghost sm" onclick="impPaste()">📋 Coller</button>
-      <div style="display:flex;gap:8px"><button class="btn ghost sm" onclick="closeFModal()">Annuler</button><button class="btn sm" onclick="doImport()">Importer</button></div>
-    </div></div>`;
-};
-window.impPaste=async()=>{ try{ const t=await navigator.clipboard.readText(); $('#imp-txt').value=t; }catch(e){ $('#imp-msg').innerHTML='<div class="msg err">Colle le code manuellement (appui long → Coller).</div>'; } };
-window.doImport=()=>{
-  const raw=($('#imp-txt').value||'').trim(); const msg=$('#imp-msg');
-  let d; try{ const i=raw.indexOf('{'), j=raw.lastIndexOf('}'); d=JSON.parse(raw.slice(i,j+1)); }catch(e){ msg.innerHTML='<div class="msg err">Code invalide — vérifie qu\'il est complet.</div>'; return; }
-  const lignes=(d.lignes||d.l||[]).map(x=>{
-    const cat=x.categorie??x.c??'', desc=x.description??x.d??'', u=x.unite??x.u??'forfait';
-    const forfait=(u==='forfait'); const q=+(x.quantite??x.q)||0, pu=+(x.prix_unitaire??x.p)||0;
-    const mt=+(x.montant??x.m)||(forfait?pu:Math.round(q*pu*100)/100);
-    return {categorie:cat,description:desc,quantite:forfait?'':q,unite:u,prix_unitaire:forfait?'':pu,montant:mt};
-  });
-  if(!lignes.length){ msg.innerHTML='<div class="msg err">Aucune ligne dans ce code.</div>'; return; }
-  const num=(d.numero&&!S.devis.some(x=>x.numero===d.numero))?d.numero:nextNum('DEV',S.devis);
-  let cid=''; if(d.client){ const c=S.clients.find(x=>(x.nom||'').toLowerCase()===String(d.client).toLowerCase()); if(c) cid=c.id; }
-  ED={ numero:num, date:d.date||today(), client_id:cid, newClient:cid?'':(d.client||''), newAddr:d.adresse||'',
-    mat:d.materiel||'entreprise', notes:d.notes||'', descChantier:d.description_chantier||d.objet||'',
-    acompte:d.acompte||'', duree:d.duree||'', tva:+d.tva||0, lignes };
-  closeFModal(); go('editor');
-};
 /* ---- Command palette / power shortcuts ---- */
 const CMD_ACTIONS=[['Nouveau devis','newDevis()'],['Factures','go("factures")'],['Agenda','go("agenda")'],['Clients','go("clients")'],['Comptabilité','go("compta")'],['Mon entreprise','go("settings")']];
 function openCmd(){const el=$('#cmd');if(!el)return;el.classList.remove('hidden');$('#cmd-input').value='';renderCmd('');setTimeout(()=>$('#cmd-input').focus(),20)}
